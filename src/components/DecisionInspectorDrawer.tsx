@@ -9,7 +9,7 @@ import {
   Wrench,
   X,
   AlertTriangle,
-} from 'lucide-react';
+} from './Icons';
 import { DecisionTrace } from '@/domain/types';
 
 export function DecisionInspectorDrawer({

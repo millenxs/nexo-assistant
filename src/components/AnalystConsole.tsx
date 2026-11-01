@@ -17,7 +17,7 @@ import {
   Sparkles,
   UserRound,
   X,
-} from 'lucide-react';
+} from './Icons';
 import {
   Analyst,
   Conversation,

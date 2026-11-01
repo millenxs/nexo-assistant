@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ArrowRight, Check, Eye, EyeOff, KeyRound, Mail, Headset } from 'lucide-react';
+import { ArrowRight, Check, Eye, EyeOff, KeyRound, Mail, Headset } from './Icons';
 import { Analyst, Employee } from '@/domain/types';
 import { NexoMark } from './NexoMark';
 

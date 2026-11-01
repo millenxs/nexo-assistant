@@ -16,7 +16,7 @@ import {
   Sparkles,
   UserRound,
   Wrench,
-} from 'lucide-react';
+} from './Icons';
 import {
   AffectedScope,
   Conversation,
