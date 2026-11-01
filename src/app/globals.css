@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+:root {
+  /* Core Nexo Design Tokens extracted from nexo.pen */
+  --bg: #FCFCFC;
+  --surface: #FFFFFF;
+  --card: #F5F5F5;
+  --card-strong: #EDEDED;
+  --fg: #0B0B0B;
+  --muted: #636363;
+  --subtle: #8E8E8E;
+  --border: rgba(11, 11, 11, 0.08);
+  --border-strong: rgba(11, 11, 11, 0.14);
+
+  --paper: #FFFFFF;
+  --desk: #F6F7F9;
+  --ink: #1B2431;
+  --ink-2: #3D4656;
+  --ink-3: #5B6472;
+  --rule: #E6E8EC;
+  --cta: #0062C4;
+
+  --primary: #0285F7;
+  --primary-hover: #0071D6;
+  --primary-soft: rgba(2, 133, 247, 0.07);
+  --primary-text: #0069C7;
+
+  --success: #00BD6C;
+  --success-soft: rgba(0, 189, 108, 0.08);
+  --success-text: #00804A;
+
+  --warning: #F5A500;
+  --warning-soft: rgba(245, 165, 0, 0.09);
+  --warning-text: #946300;
+
+  --danger: #EE343B;
+  --danger-soft: rgba(238, 52, 59, 0.07);
+  --danger-text: #C4161D;
+
+  --violet: #A37AFF;
+  --violet-soft: rgba(163, 122, 255, 0.09);
+  --violet-text: #6B3FE0;
+
+  --bubble-ai-console: #E6EFFA;
+  --bubble-analyst-console: #E3F4EA;
+  --console-canvas: #EEF1F5;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-ui), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.font-display {
+  font-family: var(--font-display), Georgia, serif;
+}
+
+.font-ui {
+  font-family: var(--font-ui), -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.font-data {
+  font-family: var(--font-data), ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* Subtle custom scrollbars for chat & console panels */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(27, 36, 49, 0.14);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(27, 36, 49, 0.28);
+}
