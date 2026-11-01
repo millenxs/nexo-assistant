@@ -6,6 +6,25 @@ import { evaluatePriorityAndSla, inspectTicketSla } from '@/domain/rules/priorit
 import { evaluateDuplicateOrReopen } from '@/domain/rules/ticket-rules';
 import { conversationService } from '@/services/conversation-service';
 
+export async function execSearchHelpCenter(inputData: {
+  query: string;
+  employeeOs?: 'Windows 10' | 'Windows 11' | 'macOS';
+}) {
+  const res = kbService.searchArticles(inputData.query, inputData.employeeOs);
+  return {
+    matchedCount: res.articles.length,
+    articles: res.articles.map((a) => ({
+      id: a.article.id,
+      title: a.article.title,
+      category: a.article.category,
+      summary: a.article.summary,
+      content: a.article.content,
+      solvesWithoutTicket: a.solvesWithoutTicket,
+      osEscalationReason: a.osEscalationReason,
+    })),
+  };
+}
+
 export const searchHelpCenterTool = createTool({
   id: 'search-help-center',
   description:
@@ -31,22 +50,32 @@ export const searchHelpCenterTool = createTool({
       })
     ),
   }),
-  execute: async (inputData) => {
-    const res = kbService.searchArticles(inputData.query, inputData.employeeOs);
-    return {
-      matchedCount: res.articles.length,
-      articles: res.articles.map((a) => ({
-        id: a.article.id,
-        title: a.article.title,
-        category: a.article.category,
-        summary: a.article.summary,
-        content: a.article.content,
-        solvesWithoutTicket: a.solvesWithoutTicket,
-        osEscalationReason: a.osEscalationReason,
-      })),
-    };
-  },
+  execute: async (inputData) => execSearchHelpCenter(inputData),
 });
+
+export async function execListMyTickets(inputData: {
+  authenticatedEmployeeId: string;
+  onlyOpen?: boolean;
+}) {
+  const { tickets, retriedLegacyError } = await ticketService.listTicketsForEmployee(
+    inputData.authenticatedEmployeeId,
+    { onlyOpen: inputData.onlyOpen }
+  );
+  return {
+    count: tickets.length,
+    retriedLegacyError,
+    tickets: tickets.map((t) => ({
+      number: t.number,
+      type: t.type,
+      title: t.title,
+      category: t.category,
+      priority: t.priority,
+      status: t.status,
+      isOverdue: Boolean(t.isOverdue),
+      lastUpdateRelativeLabel: t.lastUpdateRelativeLabel ?? 'recente',
+    })),
+  };
+}
 
 export const listMyTicketsTool = createTool({
   id: 'list-my-tickets',
@@ -72,27 +101,62 @@ export const listMyTicketsTool = createTool({
       })
     ),
   }),
-  execute: async (inputData) => {
-    const { tickets, retriedLegacyError } = await ticketService.listTicketsForEmployee(
-      inputData.authenticatedEmployeeId,
-      { onlyOpen: inputData.onlyOpen }
-    );
-    return {
-      count: tickets.length,
-      retriedLegacyError,
-      tickets: tickets.map((t) => ({
-        number: t.number,
-        type: t.type,
-        title: t.title,
-        category: t.category,
-        priority: t.priority,
-        status: t.status,
-        isOverdue: Boolean(t.isOverdue),
-        lastUpdateRelativeLabel: t.lastUpdateRelativeLabel ?? 'recente',
-      })),
-    };
-  },
+  execute: async (inputData) => execListMyTickets(inputData),
 });
+
+export async function execInspectTicketDetail(inputData: {
+  ticketNumber: string;
+  authenticatedEmployeeId: string;
+}) {
+  try {
+    const { ticket, retriedLegacyError } = await ticketService.getTicketForEmployee(
+      inputData.ticketNumber,
+      inputData.authenticatedEmployeeId
+    );
+
+    if (!ticket) {
+      return {
+        found: false,
+        privacyDenied: false,
+        retriedLegacyError,
+        message: `Chamado ${inputData.ticketNumber} não encontrado entre os seus chamados.`,
+        ticket: null,
+      };
+    }
+
+    const sla = inspectTicketSla(ticket);
+    return {
+      found: true,
+      privacyDenied: false,
+      retriedLegacyError,
+      message:
+        sla.overdueExplanation ??
+        `Chamado ${ticket.number} dentro do prazo (${sla.slaTargetLabel}).`,
+      ticket: {
+        number: ticket.number,
+        title: ticket.title,
+        description: ticket.description,
+        category: ticket.category,
+        priority: ticket.priority,
+        status: ticket.status,
+        isOverdue: sla.isOverdue,
+        overdueExplanation: sla.overdueExplanation,
+        lastUpdateRelativeLabel: sla.relativeUpdateLabel,
+      },
+    };
+  } catch (err) {
+    if (err instanceof PrivacyViolationError) {
+      return {
+        found: false,
+        privacyDenied: true,
+        retriedLegacyError: false,
+        message: err.message,
+        ticket: null,
+      };
+    }
+    throw err;
+  }
+}
 
 export const inspectTicketDetailTool = createTool({
   id: 'inspect-ticket-detail',
@@ -121,55 +185,26 @@ export const inspectTicketDetailTool = createTool({
       })
       .nullable(),
   }),
-  execute: async (inputData) => {
-    try {
-      const { ticket, retriedLegacyError } = await ticketService.getTicketForEmployee(
-        inputData.ticketNumber,
-        inputData.authenticatedEmployeeId
-      );
-
-      if (!ticket) {
-        return {
-          found: false,
-          privacyDenied: false,
-          retriedLegacyError,
-          message: `Chamado ${inputData.ticketNumber} não encontrado entre os seus chamados.`,
-          ticket: null,
-        };
-      }
-
-      const sla = inspectTicketSla(ticket);
-      return {
-        found: true,
-        privacyDenied: false,
-        retriedLegacyError,
-        message: sla.overdueExplanation ?? `Chamado ${ticket.number} dentro do prazo (${sla.slaTargetLabel}).`,
-        ticket: {
-          number: ticket.number,
-          title: ticket.title,
-          description: ticket.description,
-          category: ticket.category,
-          priority: ticket.priority,
-          status: ticket.status,
-          isOverdue: sla.isOverdue,
-          overdueExplanation: sla.overdueExplanation,
-          lastUpdateRelativeLabel: sla.relativeUpdateLabel,
-        },
-      };
-    } catch (err) {
-      if (err instanceof PrivacyViolationError) {
-        return {
-          found: false,
-          privacyDenied: true,
-          retriedLegacyError: false,
-          message: err.message,
-          ticket: null,
-        };
-      }
-      throw err;
-    }
-  },
+  execute: async (inputData) => execInspectTicketDetail(inputData),
 });
+
+export async function execCheckDuplicateOrReopen(inputData: {
+  authenticatedEmployeeId: string;
+  problemText: string;
+  category: 'Acesso' | 'Rede e VPN' | 'Hardware' | 'Software' | 'E-mail' | 'Outros';
+}) {
+  const { tickets } = await ticketService.listTicketsForEmployee(
+    inputData.authenticatedEmployeeId
+  );
+  const check = evaluateDuplicateOrReopen(tickets, inputData.problemText, inputData.category);
+
+  return {
+    action: check.action,
+    matchedTicketNumber:
+      check.action === 'CREATE_NEW_TICKET' ? null : check.matchedTicket.number,
+    reason: check.reason,
+  };
+}
 
 export const checkDuplicateOrReopenTool = createTool({
   id: 'check-duplicate-or-reopen',
@@ -185,24 +220,23 @@ export const checkDuplicateOrReopenTool = createTool({
     matchedTicketNumber: z.string().nullable(),
     reason: z.string(),
   }),
-  execute: async (inputData) => {
-    const { tickets } = await ticketService.listTicketsForEmployee(
-      inputData.authenticatedEmployeeId
-    );
-    const check = evaluateDuplicateOrReopen(
-      tickets,
-      inputData.problemText,
-      inputData.category
-    );
-
-    return {
-      action: check.action,
-      matchedTicketNumber:
-        check.action === 'CREATE_NEW_TICKET' ? null : check.matchedTicket.number,
-      reason: check.reason,
-    };
-  },
+  execute: async (inputData) => execCheckDuplicateOrReopen(inputData),
 });
+
+export async function execEvaluatePriorityAndSla(inputData: {
+  type: 'INC' | 'REQ';
+  affectedScope: 'Somente você' | 'Minha equipe' | 'Toda a empresa' | 'Não sei';
+  hasSameDayDeadline?: boolean;
+  blocksWorkCompletely?: boolean;
+}) {
+  const res = evaluatePriorityAndSla(inputData);
+  return {
+    priority: res.priority,
+    slaDurationLabel: res.slaDurationLabel,
+    slaDueLabel: res.slaDueLabel,
+    ruleExplanation: res.ruleExplanation,
+  };
+}
 
 export const evaluatePriorityAndSlaTool = createTool({
   id: 'evaluate-priority-and-sla',
@@ -220,15 +254,7 @@ export const evaluatePriorityAndSlaTool = createTool({
     slaDueLabel: z.string(),
     ruleExplanation: z.string(),
   }),
-  execute: async (inputData) => {
-    const res = evaluatePriorityAndSla(inputData);
-    return {
-      priority: res.priority,
-      slaDurationLabel: res.slaDurationLabel,
-      slaDueLabel: res.slaDueLabel,
-      ruleExplanation: res.ruleExplanation,
-    };
-  },
+  execute: async (inputData) => execEvaluatePriorityAndSla(inputData),
 });
 
 export const prepareTicketDraftTool = createTool({
@@ -276,6 +302,40 @@ export const prepareTicketDraftTool = createTool({
   },
 });
 
+export async function execRequestAnalystTransfer(inputData: {
+  conversationId: string;
+  reason:
+    | 'USER_REQUESTED'
+    | 'CRITICAL_PRIORITY'
+    | 'OVERDUE_TICKET'
+    | 'LOW_CONFIDENCE'
+    | 'LEGACY_SYSTEM_FAILURE';
+  reasonLabel: string;
+  targetTier: 'Suporte N1' | 'Suporte N2';
+  confidence: number;
+  relatedTicketNumber?: string | null;
+  summary: string;
+}) {
+  const updated = conversationService.transferToAnalyst({
+    conversationId: inputData.conversationId,
+    handoffSummary: {
+      reason: inputData.reason,
+      reasonLabel: inputData.reasonLabel,
+      targetTier: inputData.targetTier,
+      confidence: inputData.confidence,
+      relatedTicketNumber: inputData.relatedTicketNumber ?? null,
+      summary: inputData.summary,
+      transferredAt: new Date().toISOString(),
+      pausedUntilLabel: 'Agent pausado · aguardando atendente',
+    },
+  });
+
+  return {
+    status: updated.status,
+    targetTier: inputData.targetTier,
+  };
+}
+
 export const requestAnalystTransferTool = createTool({
   id: 'request-analyst-transfer',
   description:
@@ -299,26 +359,7 @@ export const requestAnalystTransferTool = createTool({
     status: z.string(),
     targetTier: z.string(),
   }),
-  execute: async (inputData) => {
-    const updated = conversationService.transferToAnalyst({
-      conversationId: inputData.conversationId,
-      handoffSummary: {
-        reason: inputData.reason,
-        reasonLabel: inputData.reasonLabel,
-        targetTier: inputData.targetTier,
-        confidence: inputData.confidence,
-        relatedTicketNumber: inputData.relatedTicketNumber ?? null,
-        summary: inputData.summary,
-        transferredAt: new Date().toISOString(),
-        pausedUntilLabel: 'Agent pausado · aguardando atendente',
-      },
-    });
-
-    return {
-      status: updated.status,
-      targetTier: inputData.targetTier,
-    };
-  },
+  execute: async (inputData) => execRequestAnalystTransfer(inputData),
 });
 
 export const nexoTools = {

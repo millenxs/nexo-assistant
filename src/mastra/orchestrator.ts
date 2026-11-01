@@ -20,13 +20,12 @@ import {
   ticketService,
 } from '@/services/ticket-service';
 import {
-  checkDuplicateOrReopenTool,
-  evaluatePriorityAndSlaTool,
-  inspectTicketDetailTool,
-  listMyTicketsTool,
-  prepareTicketDraftTool,
-  requestAnalystTransferTool,
-  searchHelpCenterTool,
+  execCheckDuplicateOrReopen,
+  execEvaluatePriorityAndSla,
+  execInspectTicketDetail,
+  execListMyTickets,
+  execRequestAnalystTransfer,
+  execSearchHelpCenter,
 } from './tools/service-desk-tools';
 import { getServerModelConfig } from './model-provider';
 import { mastra } from './agent';
@@ -367,21 +366,18 @@ async function executeAgentTurn(
       ? `${employee.name} solicitou falar com um analista sobre o chamado ${activeTicketNum}. Histórico da conversa preservado para atendimento N2.`
       : `${employee.name} solicitou atendimento humano direto no chat do Service Desk.`;
 
-    await requestAnalystTransferTool.execute!(
-      {
-        conversationId: conversation.id,
-        reason: activeTicketNum === 'INC-20311' ? 'OVERDUE_TICKET' : 'USER_REQUESTED',
-        reasonLabel:
-          activeTicketNum === 'INC-20311'
-            ? 'Chamado vencido + solicitação do funcionário'
-            : 'Solicitado pelo funcionário',
-        targetTier: 'Suporte N2',
-        confidence: 98,
-        relatedTicketNumber: activeTicketNum ?? null,
-        summary: summaryText,
-      },
-      {} as never
-    );
+    await execRequestAnalystTransfer({
+      conversationId: conversation.id,
+      reason: activeTicketNum === 'INC-20311' ? 'OVERDUE_TICKET' : 'USER_REQUESTED',
+      reasonLabel:
+        activeTicketNum === 'INC-20311'
+          ? 'Chamado vencido + solicitação do funcionário'
+          : 'Solicitado pelo funcionário',
+      targetTier: 'Suporte N2',
+      confidence: 98,
+      relatedTicketNumber: activeTicketNum ?? null,
+      summary: summaryText,
+    });
 
     toolCalls.push({
       toolId: 'request-analyst-transfer',
@@ -505,13 +501,10 @@ async function executeAgentTurn(
   ) {
     const targetNum = conversation.pendingContext.targetTicketNumber;
     const t0 = Date.now();
-    const detail = await inspectTicketDetailTool.execute!(
-      {
-        ticketNumber: targetNum,
-        authenticatedEmployeeId: employee.id,
-      },
-      {} as never
-    );
+    const detail = await execInspectTicketDetail({
+      ticketNumber: targetNum,
+      authenticatedEmployeeId: employee.id,
+    });
     toolCalls.push({
       toolId: 'inspect-ticket-detail',
       label: `consultou o ${targetNum}`,
@@ -595,13 +588,10 @@ async function executeAgentTurn(
     !lower.includes('novamente')
   ) {
     const t0 = Date.now();
-    const detail = await inspectTicketDetailTool.execute!(
-      {
-        ticketNumber: explicitTicketNumber,
-        authenticatedEmployeeId: employee.id,
-      },
-      {} as never
-    );
+    const detail = await execInspectTicketDetail({
+      ticketNumber: explicitTicketNumber,
+      authenticatedEmployeeId: employee.id,
+    });
 
     toolCalls.push({
       toolId: 'inspect-ticket-detail',
@@ -739,13 +729,10 @@ async function executeAgentTurn(
     lower.includes('consultar chamado')
   ) {
     const t0 = Date.now();
-    const listRes = await listMyTicketsTool.execute!(
-      {
-        authenticatedEmployeeId: employee.id,
-        onlyOpen: true,
-      },
-      {} as never
-    );
+    const listRes = await execListMyTickets({
+      authenticatedEmployeeId: employee.id,
+      onlyOpen: true,
+    });
 
     toolCalls.push({
       toolId: 'list-my-tickets',
@@ -827,15 +814,12 @@ async function executeAgentTurn(
     const title = pending.suggestedTitle ?? 'Chamado de suporte de TI';
 
     const t0 = Date.now();
-    const slaRes = await evaluatePriorityAndSlaTool.execute!(
-      {
-        type: ticketType,
-        affectedScope: scopeToUse,
-        hasSameDayDeadline: urgency.hasSameDayDeadline,
-        blocksWorkCompletely: urgency.blocksWorkCompletely,
-      },
-      {} as never
-    );
+    const slaRes = await execEvaluatePriorityAndSla({
+      type: ticketType,
+      affectedScope: scopeToUse,
+      hasSameDayDeadline: urgency.hasSameDayDeadline,
+      blocksWorkCompletely: urgency.blocksWorkCompletely,
+    });
 
     toolCalls.push({
       toolId: 'evaluate-priority-and-sla',
@@ -947,14 +931,11 @@ async function executeAgentTurn(
 
   // 8.1: Verifica chamados existentes do funcionário (Sem duplicidade + Reabertura em 7 dias)
   const tDupStart = Date.now();
-  const dupCheck = await checkDuplicateOrReopenTool.execute!(
-    {
-      authenticatedEmployeeId: employee.id,
-      problemText: text,
-      category,
-    },
-    {} as never
-  );
+  const dupCheck = await execCheckDuplicateOrReopen({
+    authenticatedEmployeeId: employee.id,
+    problemText: text,
+    category,
+  });
 
   toolCalls.push({
     toolId: 'list-my-tickets',
@@ -1116,13 +1097,10 @@ async function executeAgentTurn(
 
   // 8.2: Busca na Central de Ajuda
   const tKbStart = Date.now();
-  const kbRes = await searchHelpCenterTool.execute!(
-    {
-      query: text,
-      employeeOs: employee.os,
-    },
-    {} as never
-  );
+  const kbRes = await execSearchHelpCenter({
+    query: text,
+    employeeOs: employee.os,
+  });
 
   toolCalls.push({
     toolId: 'search-help-center',
@@ -1214,18 +1192,15 @@ async function executeAgentTurn(
     lower.includes('banco de dados corrompido');
 
   if (isAmbiguousOrComplexInfra) {
-    await requestAnalystTransferTool.execute!(
-      {
-        conversationId: conversation.id,
-        reason: 'LOW_CONFIDENCE',
-        reasonLabel: 'Agent pediu ajuda · confiança 41%',
-        targetTier: 'Suporte N2',
-        confidence: 41,
-        relatedTicketNumber: conversation.activeTicketNumber ?? null,
-        summary: `${employee.name} relatou falha avançada de infraestrutura ("${text}"). Nenhum artigo aplicável na Central de Ajuda; escalonado automaticamente por baixa confiança (41%).`,
-      },
-      {} as never
-    );
+    await execRequestAnalystTransfer({
+      conversationId: conversation.id,
+      reason: 'LOW_CONFIDENCE',
+      reasonLabel: 'Agent pediu ajuda · confiança 41%',
+      targetTier: 'Suporte N2',
+      confidence: 41,
+      relatedTicketNumber: conversation.activeTicketNumber ?? null,
+      summary: `${employee.name} relatou falha avançada de infraestrutura ("${text}"). Nenhum artigo aplicável na Central de Ajuda; escalonado automaticamente por baixa confiança (41%).`,
+    });
 
     toolCalls.push({
       toolId: 'request-analyst-transfer',
