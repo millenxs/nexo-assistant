@@ -292,6 +292,12 @@ const STOP_WORDS = new Set([
   'abrir',
   'chamado',
   'problema',
+  'notebook',
+  'computador',
+  'windows',
+  'desde',
+  'aparece',
+  'erro',
 ]);
 
 function extractSignificantTokens(text: string): string[] {
@@ -319,13 +325,15 @@ export function evaluateDuplicateOrReopen(
 
   const sharesProblemContext = (ticket: Ticket): boolean => {
     const ticketTokens = extractSignificantTokens(`${ticket.title} ${ticket.description}`);
-    const overlap = inputTokens.filter((token) => ticketTokens.includes(token));
-    if (overlap.length >= 2) return true;
-    // Termos específicos fortes (ex: 'sap', 'vpn', 'monitor', 'sharepoint', 'lento', 'outlook')
-    const strongKeywords = ['sap', 'vpn', '809', 'monitor', 'sharepoint', 'lento', 'outlook'];
-    return strongKeywords.some(
+    const strongKeywords = ['sap', 'vpn', '809', 'monitor', 'sharepoint', 'lento', 'lentidao', 'outlook'];
+    const matchedStrong = strongKeywords.some(
       (kw) => inputTokens.includes(kw) && ticketTokens.includes(kw)
     );
+    if (matchedStrong) return true;
+
+    if (ticket.category !== category) return false;
+    const overlap = inputTokens.filter((token) => ticketTokens.includes(token));
+    return overlap.length >= 2;
   };
 
   // 1. Verifica chamados abertos do funcionário sobre o mesmo problema
