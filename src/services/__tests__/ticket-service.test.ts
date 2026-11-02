@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { resetDbWithSeeds } from '../db';
+import { JsonFallbackDatabase } from '../json-db-fallback';
 import {
   LegacySystemUnavailableError,
   PrivacyViolationError,
@@ -133,5 +134,27 @@ describe('SqliteTicketService & Isolamento de Privacidade (Etapa 3)', () => {
     expect(() => sessionService.requireEmployeeSession(anaSession.token)).toThrow(
       UnauthorizedSessionError
     );
+  });
+
+  it('funciona transparentemente com o fallback JSON caso o ambiente serverless rode Node 20 (sem node:sqlite)', async () => {
+    globalThis.__nexoDbInstance = new JsonFallbackDatabase(':memory:');
+    globalThis.__nexoDbPath = ':memory:';
+    resetDbWithSeeds(':memory:');
+
+    const anaTickets = await ticketService.listTicketsForEmployee('emp-ana');
+    expect(anaTickets.tickets.length).toBeGreaterThanOrEqual(5);
+
+    const session = sessionService.createSession({
+      userId: 'emp-ana',
+      role: 'employee',
+      userEmail: 'ana.souza@nexo.com.br',
+      userName: 'Ana Souza',
+    });
+    expect(sessionService.requireEmployeeSession(session.token).employee.email).toBe(
+      'ana.souza@nexo.com.br'
+    );
+
+    globalThis.__nexoDbInstance = undefined;
+    globalThis.__nexoDbPath = undefined;
   });
 });

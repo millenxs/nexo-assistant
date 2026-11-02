@@ -31,6 +31,57 @@ interface SessionRow {
   expires_at: string;
 }
 
+interface SignedPayload {
+  sid: string;
+  userId: string;
+  role: SessionRole;
+  userEmail: string;
+  userName: string;
+  iat: string;
+  exp: string;
+}
+
+function getSessionSecret(): string {
+  return process.env.SESSION_SECRET || 'nexo-assist-server-session-secret-2026-key';
+}
+
+function signPayload(payload: SignedPayload): string {
+  const data = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+  const sig = crypto
+    .createHmac('sha256', getSessionSecret())
+    .update(data)
+    .digest('base64url');
+  return `${data}.${sig}`;
+}
+
+function verifySignedToken(token: string): SignedPayload | null {
+  const parts = token.split('.');
+  if (parts.length !== 2) return null;
+  const [data, sig] = parts;
+  if (!data || !sig) return null;
+
+  const expectedSig = crypto
+    .createHmac('sha256', getSessionSecret())
+    .update(data)
+    .digest('base64url');
+
+  const sigBuf = Buffer.from(sig);
+  const expBuf = Buffer.from(expectedSig);
+  if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(Buffer.from(data, 'base64url').toString('utf8')) as SignedPayload;
+    if (new Date(parsed.exp).getTime() <= Date.now()) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
 export class UnauthorizedSessionError extends Error {
   constructor(message = 'Sessão inválida ou expirada. Faça login novamente.') {
     super(message);
@@ -53,12 +104,22 @@ export class SessionService {
     userName: string;
   }): ServerSession {
     const db = getDb();
-    const token = crypto.randomBytes(32).toString('hex');
     const now = new Date();
     const expires = new Date(now.getTime() + SESSION_TTL_MS);
+    const sid = crypto.randomBytes(16).toString('hex');
+
+    const token = signPayload({
+      sid,
+      userId: input.userId,
+      role: input.role,
+      userEmail: input.userEmail,
+      userName: input.userName,
+      iat: now.toISOString(),
+      exp: expires.toISOString(),
+    });
 
     db.prepare(
-      `INSERT INTO sessions (token, user_id, role, user_email, user_name, created_at, expires_at)
+      `INSERT OR REPLACE INTO sessions (token, user_id, role, user_email, user_name, created_at, expires_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)`
     ).run(
       token,
@@ -75,13 +136,48 @@ export class SessionService {
 
   getSessionByToken(token?: string | null): ServerSession | null {
     if (!token || !token.trim()) return null;
+    const trimmed = token.trim();
+
+    // 1. Verifica assinatura HMAC-SHA256 do servidor (impede falsificação pelo cliente)
+    const verified = verifySignedToken(trimmed);
+    if (!verified) return null;
 
     const db = getDb();
-    const row = db
-      .prepare('SELECT * FROM sessions WHERE token = ?')
-      .get(token.trim()) as unknown as SessionRow | undefined;
 
-    if (!row) return null;
+    // 2. Verifica se o token foi revogado explicitamente via logout
+    const revoked = db
+      .prepare('SELECT token FROM revoked_sessions WHERE token = ?')
+      .get(trimmed) as { token: string } | undefined;
+    if (revoked) return null;
+
+    // 3. Busca ou reidrata o registro na tabela sessions do SQLite local
+    let row = db
+      .prepare('SELECT * FROM sessions WHERE token = ?')
+      .get(trimmed) as unknown as SessionRow | undefined;
+
+    if (!row) {
+      db.prepare(
+        `INSERT OR REPLACE INTO sessions (token, user_id, role, user_email, user_name, created_at, expires_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
+      ).run(
+        trimmed,
+        verified.userId,
+        verified.role,
+        verified.userEmail,
+        verified.userName,
+        verified.iat,
+        verified.exp
+      );
+      row = {
+        token: trimmed,
+        user_id: verified.userId,
+        role: verified.role,
+        user_email: verified.userEmail,
+        user_name: verified.userName,
+        created_at: verified.iat,
+        expires_at: verified.exp,
+      };
+    }
 
     if (new Date(row.expires_at).getTime() <= Date.now()) {
       db.prepare('DELETE FROM sessions WHERE token = ?').run(row.token);
@@ -115,8 +211,12 @@ export class SessionService {
 
   revokeSession(token?: string | null): void {
     if (!token) return;
+    const trimmed = token.trim();
     const db = getDb();
-    db.prepare('DELETE FROM sessions WHERE token = ?').run(token.trim());
+    db.prepare('DELETE FROM sessions WHERE token = ?').run(trimmed);
+    db.prepare(
+      'INSERT OR REPLACE INTO revoked_sessions (token, revoked_at) VALUES (?, ?)'
+    ).run(trimmed, new Date().toISOString());
   }
 
   requireEmployeeSession(

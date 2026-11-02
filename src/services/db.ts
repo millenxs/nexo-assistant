@@ -1,5 +1,5 @@
-import { DatabaseSync } from 'node:sqlite';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import {
   buildSeedConversationsAndMessages,
@@ -8,40 +8,92 @@ import {
   SEED_EMPLOYEES,
   SEED_KNOWLEDGE_ARTICLES,
 } from './seed-data';
+import { JsonFallbackDatabase } from './json-db-fallback';
 
-let dbInstance: DatabaseSync | null = null;
-let currentDbPath: string | null = null;
+export interface PreparedStatementLike {
+  get(...params: unknown[]): unknown;
+  all(...params: unknown[]): unknown[];
+  run(...params: unknown[]): { changes?: number };
+}
 
-export function getDbPath(): string {
+export interface DatabaseLike {
+  exec(sql: string): void;
+  prepare(sql: string): PreparedStatementLike;
+}
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __nexoDbInstance: DatabaseLike | undefined;
+  // eslint-disable-next-line no-var
+  var __nexoDbPath: string | undefined;
+}
+
+function resolveWritableDbPath(): string {
   if (process.env.SQLITE_DB_PATH) {
     return process.env.SQLITE_DB_PATH;
   }
-  return path.join(process.cwd(), 'data', 'nexo.db');
+
+  // Em ambientes serverless read-only (como Vercel), usa os.tmpdir() (/tmp)
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    return path.join(os.tmpdir(), 'nexo.db');
+  }
+
+  const localDir = path.join(process.cwd(), 'data');
+  try {
+    if (!fs.existsSync(localDir)) {
+      fs.mkdirSync(localDir, { recursive: true });
+    }
+    fs.accessSync(localDir, fs.constants.W_OK);
+    return path.join(localDir, 'nexo.db');
+  } catch {
+    return path.join(os.tmpdir(), 'nexo.db');
+  }
 }
 
-export function getDb(customPath?: string): DatabaseSync {
+export function getDbPath(): string {
+  return resolveWritableDbPath();
+}
+
+export function getDb(customPath?: string): DatabaseLike {
   const targetPath = customPath || getDbPath();
 
-  if (dbInstance && currentDbPath === targetPath) {
-    return dbInstance;
+  if (globalThis.__nexoDbInstance && globalThis.__nexoDbPath === targetPath) {
+    initializeSchema(globalThis.__nexoDbInstance);
+    return globalThis.__nexoDbInstance;
   }
 
-  if (targetPath !== ':memory:') {
-    const dir = path.dirname(targetPath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+  let db: DatabaseLike;
+  try {
+    if (targetPath !== ':memory:') {
+      const dir = path.dirname(targetPath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
     }
-  }
 
-  const db = new DatabaseSync(targetPath);
-  db.exec('PRAGMA journal_mode = WAL;');
-  db.exec('PRAGMA foreign_keys = ON;');
+    // Carrega node:sqlite dinamicamente em runtime no Node 22.5+ sem quebrar o bundler Webpack no Node 20
+    const runtimeRequire = eval('require') as NodeRequire;
+    const sqliteMod = runtimeRequire('node:sqlite') as {
+      DatabaseSync: new (filename: string) => DatabaseLike;
+    };
+    db = new sqliteMod.DatabaseSync(targetPath);
+    db.exec('PRAGMA busy_timeout = 5000;');
+    try {
+      db.exec('PRAGMA journal_mode = WAL;');
+    } catch {
+      // ignora caso o FS não suporte WAL
+    }
+    db.exec('PRAGMA foreign_keys = ON;');
+  } catch {
+    // Fallback automático em JSON/memória para ambientes serverless com Node 18/20
+    db = new JsonFallbackDatabase(targetPath);
+  }
 
   initializeSchema(db);
   seedDatabaseIfEmpty(db);
 
-  dbInstance = db;
-  currentDbPath = targetPath;
+  globalThis.__nexoDbInstance = db;
+  globalThis.__nexoDbPath = targetPath;
   return db;
 }
 
@@ -57,12 +109,12 @@ export function resetDbWithSeeds(customPath?: string, clearSessions = true): voi
     DELETE FROM analysts;
     DELETE FROM employees;
     DELETE FROM system_settings;
-    ${clearSessions ? 'DELETE FROM sessions;' : ''}
+    ${clearSessions ? 'DELETE FROM sessions; DELETE FROM revoked_sessions;' : ''}
   `);
   seedDatabaseIfEmpty(db);
 }
 
-function initializeSchema(db: DatabaseSync): void {
+function initializeSchema(db: DatabaseLike): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS employees (
       id TEXT PRIMARY KEY,
@@ -202,10 +254,15 @@ function initializeSchema(db: DatabaseSync): void {
       created_at TEXT NOT NULL,
       expires_at TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS revoked_sessions (
+      token TEXT PRIMARY KEY,
+      revoked_at TEXT NOT NULL
+    );
   `);
 }
 
-function seedDatabaseIfEmpty(db: DatabaseSync): void {
+function seedDatabaseIfEmpty(db: DatabaseLike): void {
   const row = db.prepare('SELECT COUNT(*) as cnt FROM employees').get() as { cnt: number };
   if (row && row.cnt > 0) {
     return;
