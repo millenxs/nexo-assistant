@@ -66,7 +66,11 @@ export function EmployeeWorkspace({
   const fetchChatState = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const res = await fetch(`/api/chat?employeeId=${encodeURIComponent(employee.id)}`);
+      const res = await fetch('/api/chat');
+      if (res.status === 401) {
+        onLogout();
+        return;
+      }
       const data = await res.json();
       if (res.ok) {
         setConversation(data.conversation);
@@ -106,7 +110,6 @@ export function EmployeeWorkspace({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'send',
-          employeeId: employee.id,
           conversationId: conversation?.id,
           message: content,
         }),
@@ -146,7 +149,6 @@ export function EmployeeWorkspace({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'new-session',
-          employeeId: employee.id,
           preset,
         }),
       });
@@ -183,7 +185,6 @@ export function EmployeeWorkspace({
         body: JSON.stringify({
           action,
           draftId,
-          employeeId: employee.id,
           conversationId: conversation.id,
           updates,
         }),

@@ -45,7 +45,7 @@ export function getDb(customPath?: string): DatabaseSync {
   return db;
 }
 
-export function resetDbWithSeeds(customPath?: string): void {
+export function resetDbWithSeeds(customPath?: string, clearSessions = true): void {
   const db = getDb(customPath);
   db.exec(`
     DELETE FROM messages;
@@ -57,6 +57,7 @@ export function resetDbWithSeeds(customPath?: string): void {
     DELETE FROM analysts;
     DELETE FROM employees;
     DELETE FROM system_settings;
+    ${clearSessions ? 'DELETE FROM sessions;' : ''}
   `);
   seedDatabaseIfEmpty(db);
 }
@@ -190,6 +191,16 @@ function initializeSchema(db: DatabaseSync): void {
     CREATE TABLE IF NOT EXISTS system_settings (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS sessions (
+      token TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      role TEXT NOT NULL,
+      user_email TEXT NOT NULL,
+      user_name TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL
     );
   `);
 }

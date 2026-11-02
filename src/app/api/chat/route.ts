@@ -1,20 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { conversationService } from '@/services/conversation-service';
 import { ticketService } from '@/services/ticket-service';
+import {
+  extractSessionTokenFromRequest,
+  ForbiddenRoleError,
+  sessionService,
+  UnauthorizedSessionError,
+} from '@/services/session-service';
 import { processEmployeeMessage } from '@/mastra/orchestrator';
 
 export async function GET(req: NextRequest) {
   try {
-    const employeeId = req.nextUrl.searchParams.get('employeeId') || 'emp-ana';
-    const employee = conversationService.getEmployeeById(employeeId);
-    if (!employee) {
-      return NextResponse.json({ error: 'Colaborador não encontrado.' }, { status: 404 });
-    }
+    const token = extractSessionTokenFromRequest(req);
+    const claimedEmployeeId = req.nextUrl.searchParams.get('employeeId');
+    const session = sessionService.requireEmployeeSession(token, claimedEmployeeId);
+    const employee = session.employee;
 
     const { conversation, messages } =
       conversationService.getOrCreateEmployeeConversation(employee.id);
 
-    // Busca chamados do funcionário para exibir no Perfil sem depender de falha simulada
     const tickets = ticketService.listTicketsForAnalystConsole(employee.id);
     const legacyMode = ticketService.getLegacyInstabilityMode();
 
@@ -26,6 +30,12 @@ export async function GET(req: NextRequest) {
       legacyMode,
     });
   } catch (err) {
+    if (err instanceof UnauthorizedSessionError) {
+      return NextResponse.json({ error: err.message }, { status: 401 });
+    }
+    if (err instanceof ForbiddenRoleError) {
+      return NextResponse.json({ error: err.message }, { status: 403 });
+    }
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Erro ao carregar conversa.' },
       { status: 500 }
@@ -43,7 +53,9 @@ export async function POST(req: NextRequest) {
       preset?: 'empty' | 'vpn-draft';
     };
 
-    const employeeId = body.employeeId || 'emp-ana';
+    const token = extractSessionTokenFromRequest(req);
+    const session = sessionService.requireEmployeeSession(token, body.employeeId);
+    const employeeId = session.employee.id;
 
     if (body.action === 'new-session') {
       const { conversation, messages } = conversationService.startFreshConversation(
@@ -66,8 +78,16 @@ export async function POST(req: NextRequest) {
     const { conversation: currentConv } =
       conversationService.getOrCreateEmployeeConversation(employeeId);
 
+    // Impede que o cliente manipule conversationId de outro colaborador
+    if (body.conversationId && body.conversationId !== currentConv.id) {
+      return NextResponse.json(
+        { error: 'Conversa não pertence ao funcionário autenticado na sessão.' },
+        { status: 403 }
+      );
+    }
+
     const turnResult = await processEmployeeMessage({
-      conversationId: body.conversationId || currentConv.id,
+      conversationId: currentConv.id,
       employeeId,
       userMessage: messageText,
     });
@@ -84,6 +104,12 @@ export async function POST(req: NextRequest) {
       error: turnResult.error,
     });
   } catch (err) {
+    if (err instanceof UnauthorizedSessionError) {
+      return NextResponse.json({ error: err.message }, { status: 401 });
+    }
+    if (err instanceof ForbiddenRoleError) {
+      return NextResponse.json({ error: err.message }, { status: 403 });
+    }
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Erro ao processar mensagem.' },
       { status: 500 }

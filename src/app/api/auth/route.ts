@@ -1,19 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { conversationService } from '@/services/conversation-service';
 import { ticketService } from '@/services/ticket-service';
+import {
+  attachSessionCookie,
+  clearSessionCookie,
+  extractSessionTokenFromRequest,
+  sessionService,
+} from '@/services/session-service';
 import { getServerModelConfig } from '@/mastra/model-provider';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const employees = conversationService.listEmployees();
   const analysts = conversationService.listAnalysts();
   const modelConfig = getServerModelConfig();
   const legacyMode = ticketService.getLegacyInstabilityMode();
+
+  const token = extractSessionTokenFromRequest(req);
+  const currentSession = sessionService.getSessionByToken(token);
 
   return NextResponse.json({
     employees,
     analysts,
     modelConfig,
     legacyMode,
+    activeSession: currentSession
+      ? {
+          role: currentSession.role,
+          employee: currentSession.employee ?? null,
+          analyst: currentSession.analyst ?? null,
+        }
+      : null,
   });
 }
 
@@ -29,20 +45,43 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const previousToken = extractSessionTokenFromRequest(req);
+    if (previousToken) {
+      sessionService.revokeSession(previousToken);
+    }
+
     const employee = conversationService.getEmployeeByEmail(email);
     if (employee) {
-      return NextResponse.json({
+      const session = sessionService.createSession({
+        userId: employee.id,
+        role: 'employee',
+        userEmail: employee.email,
+        userName: employee.name,
+      });
+
+      const res = NextResponse.json({
         role: 'employee',
         employee,
       });
+      attachSessionCookie(res, session.token);
+      return res;
     }
 
     const analyst = conversationService.getAnalystByEmailOrId(email);
     if (analyst) {
-      return NextResponse.json({
+      const session = sessionService.createSession({
+        userId: analyst.id,
+        role: 'analyst',
+        userEmail: analyst.email,
+        userName: analyst.name,
+      });
+
+      const res = NextResponse.json({
         role: 'analyst',
         analyst,
       });
+      attachSessionCookie(res, session.token);
+      return res;
     }
 
     return NextResponse.json(
@@ -58,4 +97,14 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+export async function DELETE(req: NextRequest) {
+  const token = extractSessionTokenFromRequest(req);
+  if (token) {
+    sessionService.revokeSession(token);
+  }
+  const res = NextResponse.json({ ok: true });
+  clearSessionCookie(res);
+  return res;
 }

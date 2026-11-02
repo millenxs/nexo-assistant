@@ -61,6 +61,7 @@ src/
 ├── services/                # Persistência SQLite e Serviços de Negócio Independentes
 │   ├── db.ts                # Schema SQLite (data/nexo.db) com persistência entre reinícios
 │   ├── seed-data.ts         # Fixtures do Anexo B e estados ilustrativos do nexo.pen
+│   ├── session-service.ts   # Sessão de servidor persistida no SQLite + cookie HttpOnly (anti-spoofing)
 │   ├── ticket-service.ts    # Interface ITicketService + simulação de instabilidade do sistema legado
 │   ├── kb-service.ts        # Busca nos artigos da Central de Ajuda com restrição por SO
 │   └── conversation-service.ts # Histórico, rascunhos, takeover do analista e sincronização
@@ -118,7 +119,8 @@ O PRD especifica que *"o sistema de chamados é legado e, de vez em quando, fica
 ## 6. Principais Trade-offs e O que Faria com Mais Tempo
 
 ### Trade-offs adotados
-- **SQLite nativo (`node:sqlite`) em vez de banco externo via Docker:** garante que conversas, chamados, rascunhos e estado de atendimento sobrevivam ao reinício da aplicação funcionando com apenas `npm install && npm run dev`.
+- **Sessão de servidor em SQLite + Cookie `HttpOnly` (`nexo_session`):** o login demonstrativo aceita qualquer senha para as contas de exemplo (conforme a Tela 1 do PRD), mas cria uma sessão real no servidor (`src/services/session-service.ts`). Todas as rotas (`/api/chat`, `/api/drafts`, `/api/analyst`, `/api/system`) extraem a identidade (`userId`) e o papel (`employee` vs `analyst`) exclusivamente da sessão do servidor, bloqueando tentativas de personificação (`spoofing` de `employeeId`/`analystId` via API direta) com `401`/`403`.
+- **SQLite nativo (`node:sqlite`) em vez de banco externo via Docker:** garante que conversas, chamados, rascunhos, sessões e estado de atendimento sobrevivam ao reinício da aplicação funcionando com apenas `npm install && npm run dev`.
 - **Motor Híbrido (Mastra Agent + Regras Determinísticas):** garante que o projeto possa ser testado imediatamente mesmo sem chaves de API pagas configuradas, além de impedir alucinações em regras de SLA, privacidade e mutação de chamados.
 - **Polling leve (2s) entre Chat do Funcionário e Console do Analista:** permite testar a transferência, o takeover do analista e a troca de mensagens em tempo real sem exigir servidor WebSocket customizado fora do Next.js.
 

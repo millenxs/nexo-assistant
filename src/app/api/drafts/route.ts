@@ -11,14 +11,20 @@ import {
   ticketService,
 } from '@/services/ticket-service';
 import { conversationService } from '@/services/conversation-service';
+import {
+  extractSessionTokenFromRequest,
+  ForbiddenRoleError,
+  sessionService,
+  UnauthorizedSessionError,
+} from '@/services/session-service';
 
 export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as {
       action: 'confirm' | 'edit' | 'cancel';
       draftId: string;
-      employeeId: string;
-      conversationId: string;
+      employeeId?: string;
+      conversationId?: string;
       updates?: {
         type?: TicketType;
         title?: string;
@@ -29,20 +35,35 @@ export async function POST(req: NextRequest) {
       };
     };
 
-    if (!body.draftId || !body.employeeId) {
+    const token = extractSessionTokenFromRequest(req);
+    const session = sessionService.requireEmployeeSession(token, body.employeeId);
+    const authenticatedEmployeeId = session.employee.id;
+
+    if (!body.draftId) {
       return NextResponse.json(
-        { error: 'Parâmetros obrigatórios ausentes (draftId, employeeId).' },
+        { error: 'Parâmetro obrigatório ausente (draftId).' },
         { status: 400 }
+      );
+    }
+
+    const { conversation: employeeConv } =
+      conversationService.getOrCreateEmployeeConversation(authenticatedEmployeeId);
+    const conversationId = employeeConv.id;
+
+    if (body.conversationId && body.conversationId !== conversationId) {
+      return NextResponse.json(
+        { error: 'Conversa inválida para a sessão autenticada.' },
+        { status: 403 }
       );
     }
 
     if (body.action === 'confirm') {
       const { ticket, draft, retriedLegacyError } = await ticketService.confirmDraft(
         body.draftId,
-        body.employeeId
+        authenticatedEmployeeId
       );
 
-      conversationService.updatePendingContext(body.conversationId, null, ticket.number);
+      conversationService.updatePendingContext(conversationId, null, ticket.number);
 
       const actionVerb =
         draft.operation === 'CREATE'
@@ -51,10 +72,9 @@ export async function POST(req: NextRequest) {
             ? 'reaberto'
             : 'atualizado';
 
-      // Caso seja Prioridade Crítica, já transfere para analista humano segundo o Anexo A
       if (ticket.priority === 'Crítica') {
         conversationService.appendMessage({
-          conversationId: body.conversationId,
+          conversationId,
           senderType: 'agent',
           senderName: 'Nexo Assist',
           senderRole: 'IA',
@@ -99,7 +119,7 @@ export async function POST(req: NextRequest) {
         });
 
         conversationService.transferToAnalyst({
-          conversationId: body.conversationId,
+          conversationId,
           handoffSummary: {
             reason: 'CRITICAL_PRIORITY',
             reasonLabel: `Prioridade Crítica · ${ticket.number}`,
@@ -113,7 +133,7 @@ export async function POST(req: NextRequest) {
         });
       } else {
         conversationService.appendMessage({
-          conversationId: body.conversationId,
+          conversationId,
           senderType: 'agent',
           senderName: 'Nexo Assist',
           senderRole: 'IA',
@@ -155,11 +175,11 @@ export async function POST(req: NextRequest) {
         });
       }
     } else if (body.action === 'edit' && body.updates) {
-      ticketService.updateDraft(body.draftId, body.employeeId, body.updates);
+      ticketService.updateDraft(body.draftId, authenticatedEmployeeId, body.updates);
     } else if (body.action === 'cancel') {
-      const cancelled = ticketService.cancelDraft(body.draftId, body.employeeId);
+      const cancelled = ticketService.cancelDraft(body.draftId, authenticatedEmployeeId);
       conversationService.appendMessage({
-        conversationId: body.conversationId,
+        conversationId,
         senderType: 'agent',
         senderName: 'Nexo Assist',
         senderRole: 'IA',
@@ -167,9 +187,9 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const conversation = conversationService.getConversationById(body.conversationId);
-    const messages = conversationService.getMessages(body.conversationId);
-    const tickets = ticketService.listTicketsForAnalystConsole(body.employeeId);
+    const conversation = conversationService.getConversationById(conversationId);
+    const messages = conversationService.getMessages(conversationId);
+    const tickets = ticketService.listTicketsForAnalystConsole(authenticatedEmployeeId);
 
     return NextResponse.json({
       conversation,
@@ -177,7 +197,10 @@ export async function POST(req: NextRequest) {
       tickets,
     });
   } catch (err) {
-    if (err instanceof PrivacyViolationError) {
+    if (err instanceof UnauthorizedSessionError) {
+      return NextResponse.json({ error: err.message }, { status: 401 });
+    }
+    if (err instanceof ForbiddenRoleError || err instanceof PrivacyViolationError) {
       return NextResponse.json({ error: err.message }, { status: 403 });
     }
     if (err instanceof LegacySystemUnavailableError) {

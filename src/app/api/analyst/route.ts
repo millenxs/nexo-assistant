@@ -1,10 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { conversationService } from '@/services/conversation-service';
 import { ticketService } from '@/services/ticket-service';
+import {
+  extractSessionTokenFromRequest,
+  ForbiddenRoleError,
+  sessionService,
+  UnauthorizedSessionError,
+} from '@/services/session-service';
 
 export async function GET(req: NextRequest) {
   try {
-    const analystId = req.nextUrl.searchParams.get('analystId') || 'ana-rafael';
+    const token = extractSessionTokenFromRequest(req);
+    const claimedAnalystId = req.nextUrl.searchParams.get('analystId');
+    const session = sessionService.requireAnalystSession(token, claimedAnalystId);
+    const analystId = session.analyst.id;
+
     const selectedConvId = req.nextUrl.searchParams.get('conversationId');
 
     const { conversations, counts } = conversationService.listConversationsForConsole(analystId);
@@ -24,6 +34,12 @@ export async function GET(req: NextRequest) {
       employeeTickets,
     });
   } catch (err) {
+    if (err instanceof UnauthorizedSessionError) {
+      return NextResponse.json({ error: err.message }, { status: 401 });
+    }
+    if (err instanceof ForbiddenRoleError) {
+      return NextResponse.json({ error: err.message }, { status: 403 });
+    }
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Erro ao carregar console do analista.' },
       { status: 500 }
@@ -40,9 +56,10 @@ export async function POST(req: NextRequest) {
       content?: string;
     };
 
-    const analystId = body.analystId || 'ana-rafael';
-    const analyst = conversationService.getAnalystByEmailOrId(analystId);
-    const analystName = analyst?.name ?? 'Rafael Lima';
+    const token = extractSessionTokenFromRequest(req);
+    const session = sessionService.requireAnalystSession(token, body.analystId);
+    const analystId = session.analyst.id;
+    const analystName = session.analyst.name;
 
     if (body.action === 'takeover') {
       conversationService.analystTakeover(body.conversationId, analystId);
@@ -73,6 +90,12 @@ export async function POST(req: NextRequest) {
       employeeTickets,
     });
   } catch (err) {
+    if (err instanceof UnauthorizedSessionError) {
+      return NextResponse.json({ error: err.message }, { status: 401 });
+    }
+    if (err instanceof ForbiddenRoleError) {
+      return NextResponse.json({ error: err.message }, { status: 403 });
+    }
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Erro na ação do analista.' },
       { status: 500 }

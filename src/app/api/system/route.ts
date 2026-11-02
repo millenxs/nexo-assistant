@@ -2,8 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { resetDbWithSeeds } from '@/services/db';
 import { ticketService } from '@/services/ticket-service';
 import { kbService } from '@/services/kb-service';
+import {
+  extractSessionTokenFromRequest,
+  sessionService,
+} from '@/services/session-service';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const token = extractSessionTokenFromRequest(req);
+  const session = sessionService.getSessionByToken(token);
+  if (!session) {
+    return NextResponse.json(
+      { error: 'Sessão inválida ou expirada. Faça login novamente.' },
+      { status: 401 }
+    );
+  }
+
   return NextResponse.json({
     legacyMode: ticketService.getLegacyInstabilityMode(),
     articles: kbService.getAllArticles(),
@@ -12,6 +25,15 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const token = extractSessionTokenFromRequest(req);
+    const session = sessionService.getSessionByToken(token);
+    if (!session) {
+      return NextResponse.json(
+        { error: 'Sessão inválida ou expirada. Faça login novamente.' },
+        { status: 401 }
+      );
+    }
+
     const body = (await req.json()) as {
       action: 'set-legacy-mode' | 'reset-seeds';
       mode?: '0' | 'transient' | 'down';
@@ -25,7 +47,8 @@ export async function POST(req: NextRequest) {
     }
 
     if (body.action === 'reset-seeds') {
-      resetDbWithSeeds();
+      // Preserva a tabela de sessões ativas ao restaurar as fixtures de demonstração
+      resetDbWithSeeds(undefined, false);
       return NextResponse.json({
         ok: true,
         legacyMode: ticketService.getLegacyInstabilityMode(),

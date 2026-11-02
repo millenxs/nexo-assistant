@@ -23,15 +23,14 @@ export function LoginView({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const loginWithEmail = async (targetEmail: string) => {
     setError(null);
     setLoading(true);
     try {
       const res = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: targetEmail, password }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -46,6 +45,11 @@ export function LoginView({
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await loginWithEmail(email);
   };
 
   return (
@@ -263,9 +267,10 @@ export function LoginView({
                 <button
                   key={emp.id}
                   type="button"
+                  disabled={loading}
                   onClick={() => {
                     setEmail(emp.email);
-                    onLoginEmployee(emp);
+                    loginWithEmail(emp.email);
                   }}
                   className={`px-2.5 py-1 rounded-md text-[12px] border transition-colors cursor-pointer ${
                     email === emp.email
@@ -281,7 +286,8 @@ export function LoginView({
             {analysts[0] && (
               <button
                 type="button"
-                onClick={() => onLoginAnalyst(analysts[0]!)}
+                disabled={loading}
+                onClick={() => loginWithEmail(analysts[0]!.email)}
                 className="w-full h-9 px-3 rounded-[8px] bg-[var(--desk)] hover:bg-[#1B243112] border border-[var(--rule)] text-[12.5px] font-semibold text-[var(--ink)] flex items-center justify-center gap-2 transition-colors cursor-pointer"
               >
                 <Headset className="w-3.5 h-3.5 text-[var(--cta)]" />

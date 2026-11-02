@@ -22,11 +22,16 @@ export default function HomePage() {
         if (res.ok) {
           setEmployees(data.employees || []);
           setAnalysts(data.analysts || []);
-          if (data.employees?.[0]) {
-            setCurrentEmployee(data.employees[0]);
-          }
-          if (data.analysts?.[0]) {
-            setCurrentAnalyst(data.analysts[0]);
+
+          if (data.activeSession?.role === 'employee' && data.activeSession.employee) {
+            setCurrentEmployee(data.activeSession.employee);
+            setView('employee');
+          } else if (data.activeSession?.role === 'analyst' && data.activeSession.analyst) {
+            setCurrentAnalyst(data.activeSession.analyst);
+            setView('analyst');
+          } else {
+            if (data.employees?.[0]) setCurrentEmployee(data.employees[0]);
+            if (data.analysts?.[0]) setCurrentAnalyst(data.analysts[0]);
           }
         }
       } finally {
@@ -35,6 +40,29 @@ export default function HomePage() {
     };
     loadInitial();
   }, []);
+
+  const establishServerSessionByEmail = async (email: string) => {
+    const res = await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: 'demo-session-switch' }),
+    });
+    const data = await res.json();
+    if (!res.ok) return;
+
+    if (data.role === 'employee') {
+      setCurrentEmployee(data.employee);
+      setView('employee');
+    } else if (data.role === 'analyst') {
+      setCurrentAnalyst(data.analyst);
+      setView('analyst');
+    }
+  };
+
+  const handleLogout = async () => {
+    await fetch('/api/auth', { method: 'DELETE' });
+    setView('login');
+  };
 
   if (booting) {
     return (
@@ -65,13 +93,13 @@ export default function HomePage() {
     return (
       <AnalystConsole
         analyst={currentAnalyst}
-        onBackToEmployeeView={() => {
-          if (!currentEmployee && employees[0]) {
-            setCurrentEmployee(employees[0]);
+        onBackToEmployeeView={async () => {
+          const targetEmp = currentEmployee || employees[0];
+          if (targetEmp) {
+            await establishServerSessionByEmail(targetEmp.email);
           }
-          setView('employee');
         }}
-        onLogout={() => setView('login')}
+        onLogout={handleLogout}
       />
     );
   }
@@ -81,14 +109,16 @@ export default function HomePage() {
       <EmployeeWorkspace
         employee={currentEmployee}
         allEmployees={employees}
-        onSwitchEmployee={(emp) => setCurrentEmployee(emp)}
-        onOpenAnalystConsole={() => {
-          if (!currentAnalyst && analysts[0]) {
-            setCurrentAnalyst(analysts[0]);
-          }
-          setView('analyst');
+        onSwitchEmployee={async (emp) => {
+          await establishServerSessionByEmail(emp.email);
         }}
-        onLogout={() => setView('login')}
+        onOpenAnalystConsole={async () => {
+          const targetAnalyst = currentAnalyst || analysts[0];
+          if (targetAnalyst) {
+            await establishServerSessionByEmail(targetAnalyst.email);
+          }
+        }}
+        onLogout={handleLogout}
       />
     );
   }

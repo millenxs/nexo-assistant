@@ -6,6 +6,11 @@ import {
   ticketService,
 } from '../ticket-service';
 import { conversationService } from '../conversation-service';
+import {
+  ForbiddenRoleError,
+  sessionService,
+  UnauthorizedSessionError,
+} from '../session-service';
 
 describe('SqliteTicketService & Isolamento de Privacidade (Etapa 3)', () => {
   beforeEach(() => {
@@ -83,5 +88,50 @@ describe('SqliteTicketService & Isolamento de Privacidade (Etapa 3)', () => {
 
     const returned = conversationService.returnConversationToAgent('conv-ana', 'Rafael Lima');
     expect(returned.status).toBe('ACTIVE_WITH_AGENT');
+  });
+
+  it('valida sessão de servidor e impede personificação (spoofing) de employeeId ou analystId', () => {
+    // Sem token -> 401 UnauthorizedSessionError
+    expect(() => sessionService.requireEmployeeSession(null)).toThrow(
+      UnauthorizedSessionError
+    );
+
+    // Cria sessão de servidor para Ana Souza (funcionária)
+    const anaSession = sessionService.createSession({
+      userId: 'emp-ana',
+      role: 'employee',
+      userEmail: 'ana.souza@nexo.com.br',
+      userName: 'Ana Souza',
+    });
+
+    const validatedAna = sessionService.requireEmployeeSession(anaSession.token);
+    expect(validatedAna.employee.id).toBe('emp-ana');
+
+    // Tentativa de Ana Souza enviar employeeId de Carla Mendes no payload -> 403 ForbiddenRoleError
+    expect(() =>
+      sessionService.requireEmployeeSession(anaSession.token, 'emp-carla')
+    ).toThrow(ForbiddenRoleError);
+
+    // Tentativa de Ana Souza (role=employee) acessar rota do Console do Analista -> 403 ForbiddenRoleError
+    expect(() => sessionService.requireAnalystSession(anaSession.token)).toThrow(
+      ForbiddenRoleError
+    );
+
+    // Cria sessão de servidor para Rafael Lima (analista)
+    const rafaelSession = sessionService.createSession({
+      userId: 'ana-rafael',
+      role: 'analyst',
+      userEmail: 'rafael.lima@nexo.com.br',
+      userName: 'Rafael Lima',
+    });
+
+    const validatedRafael = sessionService.requireAnalystSession(rafaelSession.token);
+    expect(validatedRafael.analyst.id).toBe('ana-rafael');
+
+    // Logout revoga a sessão no banco
+    sessionService.revokeSession(anaSession.token);
+    expect(() => sessionService.requireEmployeeSession(anaSession.token)).toThrow(
+      UnauthorizedSessionError
+    );
   });
 });

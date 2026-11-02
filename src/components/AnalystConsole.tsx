@@ -62,8 +62,12 @@ export function AnalystConsole({
   const fetchConsoleData = async (convId = selectedConvId) => {
     try {
       const res = await fetch(
-        `/api/analyst?analystId=${encodeURIComponent(analyst.id)}&conversationId=${encodeURIComponent(convId)}`
+        `/api/analyst?conversationId=${encodeURIComponent(convId)}`
       );
+      if (res.status === 401) {
+        onLogout();
+        return;
+      }
       const data = await res.json();
       if (res.ok) {
         setConversations(data.conversations || []);
@@ -102,7 +106,6 @@ export function AnalystConsole({
         body: JSON.stringify({
           action,
           conversationId: activeConversation.id,
-          analystId: analyst.id,
           content: customContent ?? analystInput,
         }),
       });
