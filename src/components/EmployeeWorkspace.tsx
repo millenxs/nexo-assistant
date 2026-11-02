@@ -6,7 +6,6 @@ import {
   ArrowUp,
   Check,
   ChevronRight,
-  Headset,
   KeyRound,
   Lock,
   LogOut,
@@ -15,7 +14,6 @@ import {
   RotateCcw,
   Sparkles,
   UserRound,
-  Wrench,
 } from './Icons';
 import {
   AffectedScope,
@@ -38,22 +36,15 @@ import { DecisionInspectorDrawer } from './DecisionInspectorDrawer';
 
 export function EmployeeWorkspace({
   employee,
-  allEmployees,
-  onSwitchEmployee,
-  onOpenAnalystConsole,
   onLogout,
 }: {
   employee: Employee;
-  allEmployees: Employee[];
-  onSwitchEmployee: (emp: Employee) => void;
-  onOpenAnalystConsole: () => void;
   onLogout: () => void;
 }) {
   const [activeTab, setActiveTab] = useState<'chat' | 'profile'>('chat');
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [legacyMode, setLegacyMode] = useState<'0' | 'transient' | 'down'>('0');
   const [composerText, setComposerText] = useState('');
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -76,7 +67,6 @@ export function EmployeeWorkspace({
         setConversation(data.conversation);
         setMessages(data.messages || []);
         setTickets(data.tickets || []);
-        if (data.legacyMode) setLegacyMode(data.legacyMode);
       }
     } catch {
       if (!silent) setErrorBanner('Não foi possível sincronizar o histórico.');
@@ -202,17 +192,6 @@ export function EmployeeWorkspace({
     }
   };
 
-  const handleToggleLegacyMode = async () => {
-    const nextMode: '0' | 'transient' | 'down' =
-      legacyMode === '0' ? 'transient' : legacyMode === 'transient' ? 'down' : '0';
-    setLegacyMode(nextMode);
-    await fetch('/api/system', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'set-legacy-mode', mode: nextMode }),
-    });
-  };
-
   const statusBadge = (() => {
     if (!conversation || conversation.status === 'ACTIVE_WITH_AGENT') {
       return {
@@ -227,7 +206,7 @@ export function EmployeeWorkspace({
         bg: 'bg-[var(--warning-soft)]',
         dot: 'bg-[var(--warning)]',
         text: 'text-[var(--warning-text)]',
-        label: 'Aguardando atendente (Agent pausado)',
+        label: 'Aguardando atendente',
       };
     }
     if (conversation.status === 'WITH_ANALYST') {
@@ -235,7 +214,7 @@ export function EmployeeWorkspace({
         bg: 'bg-[var(--primary-soft)]',
         dot: 'bg-[var(--primary)]',
         text: 'text-[var(--primary-text)]',
-        label: `${conversation.assignedAnalystName || 'Analista'} atendendo · Agent pausado`,
+        label: `${conversation.assignedAnalystName || 'Analista'} atendendo`,
       };
     }
     return {
@@ -297,76 +276,7 @@ export function EmployeeWorkspace({
           </button>
         </nav>
 
-        {/* Demo Scenario Shortcuts & Analyst Console Switch */}
-        <div className="mt-6 pt-4 border-t border-[var(--rule)] space-y-1.5 px-1">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--ink-3)] px-1.5">
-            Cenários do Protótipo (.pen)
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('chat');
-              handleStartPreset('vpn-draft');
-            }}
-            className="w-full text-left px-2 py-1.5 rounded-md text-[12px] text-[var(--ink-2)] hover:bg-[var(--desk)] transition-colors cursor-pointer"
-          >
-            Tela 2 · Novo chamado (VPN 809)
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('chat');
-              handleStartPreset('reset-all');
-            }}
-            className="w-full text-left px-2 py-1.5 rounded-md text-[12px] text-[var(--ink-2)] hover:bg-[var(--desk)] transition-colors cursor-pointer"
-          >
-            Tela 3 · Consulta e prazo vencido
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('chat');
-              handleStartPreset('empty');
-            }}
-            className="w-full text-left px-2 py-1.5 rounded-md text-[12px] text-[var(--ink-2)] hover:bg-[var(--desk)] transition-colors cursor-pointer"
-          >
-            Conversa em branco (testar livre)
-          </button>
-
-          <div className="pt-2">
-            <button
-              type="button"
-              onClick={onOpenAnalystConsole}
-              className="w-full h-8 px-2.5 rounded-[8px] bg-[var(--ink)] text-white text-[12px] font-semibold flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity cursor-pointer"
-            >
-              <Headset className="w-3.5 h-3.5" />
-              <span>Console do Analista</span>
-            </button>
-          </div>
-        </div>
-
         <div className="flex-1" />
-
-        {/* Quick Persona Selector for Testing Isolation */}
-        <div className="mb-2 px-1">
-          <label className="text-[11px] text-[var(--ink-3)] block mb-1">
-            Funcionário autenticado:
-          </label>
-          <select
-            value={employee.id}
-            onChange={(e) => {
-              const found = allEmployees.find((emp) => emp.id === e.target.value);
-              if (found) onSwitchEmployee(found);
-            }}
-            className="w-full h-7 px-2 rounded-md bg-[var(--desk)] border border-[var(--rule)] text-[12px] text-[var(--ink)]"
-          >
-            {allEmployees.map((emp) => (
-              <option key={emp.id} value={emp.id}>
-                {emp.name} ({emp.os})
-              </option>
-            ))}
-          </select>
-        </div>
 
         {/* User Footer */}
         <div className="pt-3.5 pb-1 px-2 border-t border-[var(--rule)] flex items-center gap-2.5">
@@ -405,39 +315,14 @@ export function EmployeeWorkspace({
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
-            {/* Simulated Legacy System Toggle */}
-            <button
-              type="button"
-              onClick={handleToggleLegacyMode}
-              title="Simular comportamento do sistema legado de chamados (Estável / Retry lento / Indisponível)"
-              className={`h-7 px-2.5 rounded-full text-[11.5px] font-medium flex items-center gap-1.5 border cursor-pointer transition-colors ${
-                legacyMode === '0'
-                  ? 'bg-[var(--desk)] border-[var(--rule)] text-[var(--ink-2)]'
-                  : legacyMode === 'transient'
-                    ? 'bg-[var(--warning-soft)] border-[#F5A50040] text-[var(--warning-text)]'
-                    : 'bg-[var(--danger-soft)] border-[#EE343B40] text-[var(--danger-text)]'
-              }`}
-            >
-              <Wrench className="w-3 h-3" />
-              <span>
-                Sistema legado:{' '}
-                {legacyMode === '0'
-                  ? 'Estável'
-                  : legacyMode === 'transient'
-                    ? 'Oscilando (Retry)'
-                    : 'Indisponível (Timeout)'}
-              </span>
-            </button>
-
-            {/* Status Pill */}
+          {activeTab === 'chat' && (
             <div
               className={`px-3 py-1 rounded-full flex items-center gap-2 text-[12.5px] font-semibold ${statusBadge.bg} ${statusBadge.text}`}
             >
               <span className={`w-[7px] h-[7px] rounded-full ${statusBadge.dot}`} />
               <span>{statusBadge.label}</span>
             </div>
-          </div>
+          )}
         </header>
 
         {/* Tab 1: Chat View */}
@@ -692,13 +577,6 @@ export function EmployeeWorkspace({
                         ? 'O Nexo Assist está pausado aguardando um analista assumir. Suas mensagens vão direto para a fila do suporte.'
                         : `${conversation.assignedAnalystName || 'Rafael Lima'} está atendendo esta conversa (Nexo Assist pausado).`}
                     </span>
-                    <button
-                      type="button"
-                      onClick={onOpenAnalystConsole}
-                      className="font-semibold underline ml-3 shrink-0 cursor-pointer"
-                    >
-                      Abrir no Console do Analista →
-                    </button>
                   </div>
                 )}
 

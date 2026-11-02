@@ -555,7 +555,7 @@ export function buildSeedConversationsAndMessages(now: Date = new Date()): {
   const minAgo = (m: number): string => new Date(now.getTime() - m * 60 * 1000).toISOString();
 
   const conversations: Conversation[] = [
-    // Conversa 1: Ana Souza (ativa com o agent inicialmente, ou pode ser transferida no fluxo)
+    // Conversa 1: Ana Souza (ativa com o agent na Tela 3 do nexo.pen, pronta para conversar ou transferir)
     {
       id: 'conv-ana',
       employeeId: 'emp-ana',
@@ -566,26 +566,16 @@ export function buildSeedConversationsAndMessages(now: Date = new Date()): {
       employeeAvatarBg: '#DCE9F7',
       employeeAvatarFg: '#0062C4',
       employeeOnline: true,
-      status: 'WAITING_ANALYST',
+      status: 'ACTIVE_WITH_AGENT',
       assignedAnalystId: null,
       assignedAnalystName: null,
       activeTicketNumber: 'INC-20311',
-      unreadForAnalyst: 2,
-      messageCount: 7,
+      unreadForAnalyst: 0,
+      messageCount: 4,
       maxMessages: 30,
-      listTagLabel: 'Transferida · INC-20311',
-      listTagTone: 'danger',
-      handoffSummary: {
-        reason: 'OVERDUE_TICKET',
-        reasonLabel: 'Chamado vencido + solicitação da funcionária',
-        targetTier: 'Suporte N2',
-        confidence: 94,
-        relatedTicketNumber: 'INC-20311',
-        summary:
-          'Ana Souza consultou o chamado INC-20311 (Notebook lento após atualização do Windows, prioridade Média). O chamado está sem atualização há 5 dias, acima do SLA de 3 dias úteis. O diagnóstico da central já foi executado sem sucesso. Ana solicitou falar com um analista do Suporte N2.',
-        transferredAt: minAgo(5),
-        pausedUntilLabel: 'Agent pausado · até 12:05',
-      },
+      listTagLabel: 'Agent atendendo · INC-20311',
+      listTagTone: 'success',
+      handoffSummary: null,
       pendingContext: null,
       createdAt: minAgo(20),
       updatedAt: minAgo(5),
@@ -879,76 +869,6 @@ export function buildSeedConversationsAndMessages(now: Date = new Date()): {
         engine: 'mastra-deterministic-hybrid',
       },
       createdAt: minAgo(8),
-    },
-    {
-      id: 'msg-ana-5',
-      conversationId: 'conv-ana',
-      senderType: 'employee',
-      senderName: 'Ana Souza',
-      content: 'Está parado há 5 dias.',
-      createdAt: minAgo(6),
-    },
-    {
-      id: 'msg-ana-6',
-      conversationId: 'conv-ana',
-      senderType: 'employee',
-      senderName: 'Ana Souza',
-      content: 'Quero falar com um analista.',
-      createdAt: minAgo(6),
-    },
-    {
-      id: 'msg-ana-7',
-      conversationId: 'conv-ana',
-      senderType: 'agent',
-      senderName: 'Nexo Assist',
-      senderRole: 'IA',
-      content: 'Encaminhei para o Suporte N2. Um analista vai falar com você em até 2 h úteis.',
-      decisionTrace: {
-        id: 'dec-ana-3',
-        steps: ['consultou o INC-20311', 'transferiu para Suporte N2'],
-        intent: 'TRANSFER_TO_ANALYST',
-        scope: 'TI',
-        actionTaken: 'Transferiu a conversa para fila do Suporte N2 com resumo do caso e pausou o agent',
-        confidence: 98,
-        confidenceLevel: 'Alta',
-        classification: {
-          type: 'INC',
-          category: 'Hardware',
-          priority: 'Média',
-          affectedScope: 'Somente você',
-        },
-        rulesApplied: [
-          'Anexo A (Transferência): Solicitado pelo funcionário + chamado INC-20311 com prazo vencido.',
-          'Anexo A (Pausa do Agent): Conversa marcada como WAITING_ANALYST; agent pausado até liberação.',
-        ],
-        reasoning:
-          'A funcionária pediu transferência explícita para um analista devido ao atraso de 5 dias no chamado INC-20311. O agente gerou o resumo estruturado do caso, vinculou o chamado e pausou suas respostas automáticas.',
-        toolCalls: [
-          {
-            toolId: 'request-analyst-transfer',
-            label: 'transferiu para Suporte N2',
-            input: {
-              conversationId: 'conv-ana',
-              ticketNumber: 'INC-20311',
-              reason: 'OVERDUE_TICKET',
-              targetTier: 'Suporte N2',
-            },
-            outputSummary: 'Conversa transferida para Suporte N2; agent pausado',
-            durationMs: 21,
-          },
-        ],
-        engine: 'mastra-deterministic-hybrid',
-      },
-      createdAt: minAgo(5),
-    },
-    {
-      id: 'msg-ana-sys-1',
-      conversationId: 'conv-ana',
-      senderType: 'system',
-      senderName: 'Sistema',
-      content: 'Transferida para Suporte N2 · 10:05',
-      systemIcon: 'transfer',
-      createdAt: minAgo(5),
     },
 
     // Mensagens da conversa de Carla Mendes

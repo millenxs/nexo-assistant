@@ -15,7 +15,6 @@ import {
   MessageCircle,
   Search,
   Sparkles,
-  UserRound,
   X,
 } from './Icons';
 import {
@@ -36,11 +35,10 @@ type ConsoleConversationItem = Conversation & {
 
 export function AnalystConsole({
   analyst,
-  onBackToEmployeeView,
   onLogout,
 }: {
   analyst: Analyst;
-  onBackToEmployeeView: () => void;
+  onBackToEmployeeView?: () => void;
   onLogout: () => void;
 }) {
   const [conversations, setConversations] = useState<ConsoleConversationItem[]>([]);
@@ -56,6 +54,7 @@ export function AnalystConsole({
   const [showTicketPanel, setShowTicketPanel] = useState(true);
   const [selectedModalTicket, setSelectedModalTicket] = useState<Ticket | null>(null);
   const [inspectedTrace, setInspectedTrace] = useState<DecisionTrace | null>(null);
+  const [showUserMenu, setShowUserMenu] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -152,7 +151,7 @@ export function AnalystConsole({
   return (
     <div className="h-screen w-full bg-[var(--paper)] flex overflow-hidden">
       {/* 1. Left Rail (64px width per nexo.pen) */}
-      <aside className="w-16 shrink-0 h-full bg-[var(--desk)] border-r border-[var(--rule)] py-4 flex flex-col items-center gap-2">
+      <aside className="relative w-16 shrink-0 h-full bg-[var(--desk)] border-r border-[var(--rule)] py-4 flex flex-col items-center gap-1.5">
         <div className="w-10 h-10 flex items-center justify-center pb-2">
           <NexoMark size={22} color="#037AF6" />
         </div>
@@ -165,37 +164,46 @@ export function AnalystConsole({
           </span>
         </div>
 
-        {/* Switch to Employee View Button */}
-        <button
-          type="button"
-          onClick={onBackToEmployeeView}
-          title="Alternar para visão do Funcionário (Chat Nexo Assist)"
-          className="mt-2 w-10 h-10 rounded-[12px] hover:bg-[var(--paper)] flex items-center justify-center text-[var(--ink-2)] transition-colors cursor-pointer"
-        >
-          <UserRound className="w-[18px] h-[18px]" />
-        </button>
-
         <div className="flex-1" />
 
-        {/* Analyst Avatar (RL) */}
-        <div
-          className="relative w-9 h-9 rounded-full bg-[var(--primary-soft)] flex items-center justify-center"
-          title={`${analyst.name} (${analyst.tier})`}
-        >
-          <span className="text-[12.5px] font-bold text-[var(--primary-text)]">
-            {analyst.initials}
-          </span>
-          <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-[var(--success)] border-2 border-[var(--desk)]" />
-        </div>
+        {/* Analyst Avatar (Me) with Dropdown Menu */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setShowUserMenu((v) => !v)}
+            className="relative w-9 h-9 rounded-full bg-[var(--primary-soft)] flex items-center justify-center hover:ring-2 hover:ring-[#0285F733] transition-all cursor-pointer"
+            title={`${analyst.name} (${analyst.tier})`}
+          >
+            <span className="text-[12.5px] font-bold text-[var(--primary-text)]">
+              {analyst.initials}
+            </span>
+            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-[var(--success)] border-2 border-[var(--desk)]" />
+          </button>
 
-        <button
-          type="button"
-          onClick={onLogout}
-          title="Sair"
-          className="w-9 h-9 rounded-lg hover:bg-[var(--paper)] flex items-center justify-center text-[var(--ink-3)] cursor-pointer"
-        >
-          <LogOut className="w-4 h-4" />
-        </button>
+          {showUserMenu && (
+            <div className="absolute bottom-0 left-12 z-50 w-56 rounded-[12px] bg-[var(--paper)] border border-[var(--rule)] shadow-xl p-1.5 space-y-1">
+              <div className="px-2.5 py-2 border-b border-[var(--rule)]">
+                <div className="text-[13.5px] font-semibold text-[var(--ink)] truncate">
+                  {analyst.name}
+                </div>
+                <div className="text-[11.5px] text-[var(--ink-3)] truncate">
+                  {analyst.tier} · {analyst.email}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowUserMenu(false);
+                  onLogout();
+                }}
+                className="w-full h-8 px-2.5 rounded-[8px] flex items-center gap-2 text-[13px] font-medium text-[var(--danger-text)] hover:bg-[var(--danger-soft)] transition-colors cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Sair</span>
+              </button>
+            </div>
+          )}
+        </div>
       </aside>
 
       {/* 2. Chat List Column (380px width per nexo.pen) */}

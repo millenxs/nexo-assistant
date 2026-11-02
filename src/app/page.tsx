@@ -93,12 +93,6 @@ export default function HomePage() {
     return (
       <AnalystConsole
         analyst={currentAnalyst}
-        onBackToEmployeeView={async () => {
-          const targetEmp = currentEmployee || employees[0];
-          if (targetEmp) {
-            await establishServerSessionByEmail(targetEmp.email);
-          }
-        }}
         onLogout={handleLogout}
       />
     );
@@ -108,16 +102,6 @@ export default function HomePage() {
     return (
       <EmployeeWorkspace
         employee={currentEmployee}
-        allEmployees={employees}
-        onSwitchEmployee={async (emp) => {
-          await establishServerSessionByEmail(emp.email);
-        }}
-        onOpenAnalystConsole={async () => {
-          const targetAnalyst = currentAnalyst || analysts[0];
-          if (targetAnalyst) {
-            await establishServerSessionByEmail(targetAnalyst.email);
-          }
-        }}
         onLogout={handleLogout}
       />
     );
