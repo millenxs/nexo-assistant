@@ -571,7 +571,7 @@ export function buildSeedConversationsAndMessages(now: Date = new Date()): {
       assignedAnalystName: null,
       activeTicketNumber: 'INC-20311',
       unreadForAnalyst: 0,
-      messageCount: 4,
+      messageCount: 16,
       maxMessages: 30,
       listTagLabel: 'Agent atendendo · INC-20311',
       listTagTone: 'success',

@@ -329,13 +329,13 @@ export function EmployeeWorkspace({
         {activeTab === 'chat' ? (
           <div className="flex-1 flex flex-col min-h-0">
             {/* Messages Scroll Area */}
-            <div className="flex-1 overflow-y-auto px-8 lg:px-[140px] xl:px-[200px] py-7 space-y-6">
+            <div className="flex-1 overflow-y-auto px-8 lg:px-[140px] xl:px-[200px] pt-7 pb-1 flex flex-col">
               {loading ? (
-                <div className="py-16 text-center text-[14px] text-[var(--ink-3)]">
+                <div className="mt-auto w-full py-16 text-center text-[14px] text-[var(--ink-3)]">
                   Carregando atendimento…
                 </div>
               ) : messages.length === 0 ? (
-                <div className="max-w-[600px] mx-auto my-8 p-6 rounded-2xl bg-[var(--desk)] border border-[var(--rule)] space-y-4">
+                <div className="mt-auto max-w-[600px] mx-auto my-8 p-6 rounded-2xl bg-[var(--desk)] border border-[var(--rule)] space-y-4">
                   <div className="space-y-1">
                     <div className="text-[15px] font-semibold text-[var(--ink)]">
                       Olá, {employee.name.split(' ')[0]}! Como posso ajudar com TI hoje?
@@ -405,7 +405,8 @@ export function EmployeeWorkspace({
                   </div>
                 </div>
               ) : (
-                messages.map((msg) => {
+                <div className="mt-auto w-full flex flex-col gap-5">
+                {messages.map((msg) => {
                   if (msg.senderType === 'system') {
                     return (
                       <div key={msg.id} className="flex items-center gap-3 py-1">
@@ -422,7 +423,7 @@ export function EmployeeWorkspace({
                   if (msg.senderType === 'employee') {
                     return (
                       <div key={msg.id} className="flex justify-end">
-                        <div className="max-w-[520px] rounded-tl-[14px] rounded-tr-[14px] rounded-bl-[14px] rounded-br-[4px] bg-[var(--ink)] text-white px-4 py-3 text-[14.5px] leading-[1.5]">
+                        <div className="max-w-[520px] rounded-tl-[12px] rounded-tr-[12px] rounded-bl-[12px] rounded-br-[4px] bg-[var(--ink)] text-white px-4 py-[11px] text-[14.5px] leading-[21px]">
                           {msg.content}
                         </div>
                       </div>
@@ -447,9 +448,9 @@ export function EmployeeWorkspace({
 
                   // Agent Message (Matches nexo.pen Status Line + Bubble + Cards + Options)
                   return (
-                    <div key={msg.id} className="space-y-2.5">
+                    <div key={msg.id} className="space-y-1.5">
                       {/* Status Line above response (item 7 of PDF + nexo.pen) */}
-                      <div className="flex items-center gap-2.5 flex-wrap text-[12.5px]">
+                      <div className="flex items-center gap-3 flex-wrap text-[12.5px]">
                         <span className="font-semibold text-[var(--ink)]">Nexo Assist</span>
                         {msg.decisionTrace?.steps.map((step, idx) => (
                           <button
@@ -479,8 +480,8 @@ export function EmployeeWorkspace({
                       {msg.ticketCard && <TicketDetailCard ticket={msg.ticketCard} />}
 
                       {/* Main Agent Bubble */}
-                      <div className="w-[600px] max-w-full rounded-[14px] bg-[var(--paper)] border border-[#1B243117] p-4 space-y-3">
-                        <div className="text-[14.5px] leading-[1.55] text-[var(--ink)] whitespace-pre-line">
+                      <div className="w-[600px] max-w-full rounded-tl-[4px] rounded-tr-[12px] rounded-br-[12px] rounded-bl-[12px] bg-[var(--paper)] outline outline-1 outline-[#E6E8EC] outline-offset-[-0.5px] px-4 py-3 space-y-3">
+                        <div className="text-[14.5px] leading-[22px] text-[var(--ink)] whitespace-pre-line">
                           {msg.content}
                         </div>
 
@@ -548,9 +549,10 @@ export function EmployeeWorkspace({
                       )}
                     </div>
                   );
-                })
+                })}
+                <div ref={messagesEndRef} />
+                </div>
               )}
-              <div ref={messagesEndRef} />
             </div>
 
             {/* Composer Area (padding 10px 200px 18px 200px per nexo.pen) */}
@@ -618,11 +620,7 @@ export function EmployeeWorkspace({
                 </button>
               </form>
 
-              <div className="flex items-center justify-between text-[12.5px] text-[var(--ink-3)]">
-                <span>
-                  Dica: clique nos passos acima de qualquer resposta da IA para ver os detalhes da
-                  decisão.
-                </span>
+              <div className="flex justify-end text-[12.5px] text-[var(--ink-3)]">
                 <span className="font-data">
                   {conversation?.messageCount ?? 0}/{conversation?.maxMessages ?? 30} mensagens
                   nesta sessão

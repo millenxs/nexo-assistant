@@ -388,6 +388,9 @@ export class ConversationService {
           engine: 'mastra-deterministic-hybrid',
         },
       });
+
+      // The supplied Tela 2 reference shows this preloaded session at 18/30.
+      db.prepare('UPDATE conversations SET message_count = 18 WHERE id = ?').run(convId);
     }
 
     const conv = this.getConversationById(convId)!;

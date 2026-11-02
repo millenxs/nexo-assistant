@@ -20,7 +20,7 @@ export function TicketSelectorCard({
   onSelectTicket: (ticket: Ticket) => void;
 }) {
   return (
-    <div className="w-[600px] max-w-full rounded-[14px] bg-[var(--paper)] border border-[#1B24311F] overflow-hidden divide-y divide-[var(--rule)]">
+    <div className="w-full rounded-[16px] bg-[var(--paper)] outline outline-1 outline-[#1B243117] outline-offset-[-0.5px] shadow-[0px_1px_2px_#1B24310D,0px_6px_18px_#1B24310A] overflow-hidden divide-y divide-[var(--rule)]">
       {tickets.map((t, index) => {
         const isSelected = selectedNumber ? selectedNumber === t.number : index === 0;
         const dotColor =
@@ -43,7 +43,7 @@ export function TicketSelectorCard({
             key={t.number}
             type="button"
             onClick={() => onSelectTicket(t)}
-            className={`w-full h-[46px] px-3.5 flex items-center gap-3 text-left transition-colors cursor-pointer ${
+            className={`w-full h-[46px] px-4 flex items-center gap-3.5 text-left transition-colors cursor-pointer ${
               isSelected ? 'bg-[#0062C40A]' : 'hover:bg-[var(--desk)]'
             }`}
           >
@@ -57,14 +57,14 @@ export function TicketSelectorCard({
             <span className="font-data text-[12.5px] font-medium text-[var(--ink-3)] shrink-0">
               {t.number}
             </span>
-            <span className="text-[14px] font-medium text-[var(--ink)] truncate flex-1">
+            <span className="text-[14.5px] font-medium text-[var(--ink)] truncate flex-1">
               {t.title}
             </span>
             <span className="flex items-center gap-1.5 text-[12.5px] text-[var(--ink-3)] shrink-0">
               <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
               {t.status}
             </span>
-            <span className="w-[48px] text-right text-[12px] text-[var(--ink-3)] shrink-0">
+            <span className="w-[44px] text-right text-[12.5px] text-[var(--ink-3)] shrink-0">
               {dateLabel}
             </span>
           </button>
@@ -97,10 +97,10 @@ export function TicketDetailCard({ ticket }: { ticket: Ticket }) {
         : 'text-[var(--primary-text)]';
 
   return (
-    <div className="w-[600px] max-w-full rounded-[14px] bg-[var(--paper)] border border-[#1B24311F] overflow-hidden">
+    <div className="w-full rounded-[16px] bg-[var(--paper)] outline outline-1 outline-[#1B243117] outline-offset-[-0.5px] shadow-[0px_1px_2px_#1B24310D,0px_6px_18px_#1B24310A] overflow-hidden">
       {/* Body */}
-      <div className="p-4 space-y-2">
-        <div className="flex items-center gap-2 text-[12.5px]">
+      <div className="px-[18px] pt-4 pb-3.5 space-y-1.5">
+        <div className="flex items-center gap-2 pb-0.5 text-[12.5px]">
           <span className="text-[var(--ink-3)] font-medium">
             {ticket.type === 'REQ' ? 'Requisição' : 'Chamado'}
           </span>
@@ -113,27 +113,28 @@ export function TicketDetailCard({ ticket }: { ticket: Ticket }) {
           </span>
         </div>
 
-        <div className="text-[16px] font-semibold text-[var(--ink)] leading-snug">
+        <div className="text-[18px] font-semibold tracking-[-0.2px] text-[var(--ink)] leading-[23px]">
           {ticket.title}
         </div>
-        <div className="text-[14px] text-[var(--ink-2)] leading-relaxed whitespace-pre-line">
+        <div className="text-[13.5px] text-[var(--ink-2)] leading-[20px] whitespace-pre-line">
           {ticket.description}
         </div>
       </div>
 
       {/* Grid Fields */}
-      <div className="px-4 py-3 border-t border-[var(--rule)] grid grid-cols-4 gap-3 bg-[var(--paper)]">
+      <div className="px-[18px] pb-4">
+       <div className="border-t border-[var(--rule)] pt-3 grid grid-cols-4 gap-6 bg-[var(--paper)]">
         <div>
-          <div className="text-[12px] text-[var(--ink-3)]">Categoria</div>
-          <div className="text-[13.5px] font-medium text-[var(--ink)] mt-0.5">
+          <div className="text-[12.5px] text-[var(--ink-3)]">Categoria</div>
+          <div className="text-[14.5px] font-medium text-[var(--ink)] mt-1">
             {ticket.subcategory
               ? `${ticket.category} › ${ticket.subcategory}`
               : ticket.category}
           </div>
         </div>
         <div>
-          <div className="text-[12px] text-[var(--ink-3)]">Prioridade</div>
-          <div className="text-[13.5px] font-medium text-[var(--ink)] mt-0.5 flex items-center gap-1.5">
+          <div className="text-[12.5px] text-[var(--ink-3)]">Prioridade</div>
+          <div className="text-[14.5px] font-medium text-[var(--ink)] mt-1 flex items-center gap-1.5">
             <span
               className={`w-1.5 h-1.5 rounded-full ${
                 ticket.priority === 'Crítica'
@@ -147,14 +148,14 @@ export function TicketDetailCard({ ticket }: { ticket: Ticket }) {
           </div>
         </div>
         <div>
-          <div className="text-[12px] text-[var(--ink-3)]">Aberto em</div>
-          <div className="text-[13.5px] font-medium text-[var(--ink)] mt-0.5">
+          <div className="text-[12.5px] text-[var(--ink-3)]">Aberto em</div>
+          <div className="text-[14.5px] font-medium text-[var(--ink)] mt-1">
             {createdLabel}
           </div>
         </div>
         <div>
-          <div className="text-[12px] text-[var(--ink-3)]">Última atualização</div>
-          <div className="text-[13.5px] mt-0.5 flex items-center gap-1 flex-wrap">
+          <div className="text-[12.5px] text-[var(--ink-3)]">Última atualização</div>
+          <div className="text-[14.5px] mt-1 flex items-center gap-1.5 flex-wrap">
             <span
               className={
                 ticket.isOverdue
@@ -169,6 +170,7 @@ export function TicketDetailCard({ ticket }: { ticket: Ticket }) {
             )}
           </div>
         </div>
+      </div>
       </div>
     </div>
   );
@@ -227,15 +229,11 @@ export function DraftConfirmationCard({
   };
 
   return (
-    <div className="w-[600px] max-w-full rounded-[14px] bg-[var(--paper)] border border-[#1B24311F] overflow-hidden">
+    <div className="w-full rounded-[16px] bg-[var(--paper)] outline outline-1 outline-[#1B243117] outline-offset-[-0.5px] shadow-[0px_1px_2px_#1B24310D,0px_6px_18px_#1B24310A] overflow-hidden">
       {/* Body */}
-      <div className="p-4 space-y-2.5">
-        <div className="flex items-center gap-2 text-[12.5px]">
+      <div className="px-[18px] pt-4 pb-3.5 space-y-1.5">
+        <div className="flex items-center gap-2 pb-0.5 text-[12.5px]">
           <span className="text-[var(--ink-3)] font-medium">{kindLabel}</span>
-          <span className="w-1 h-1 rounded-full bg-[var(--rule)]" />
-          <span className="font-data text-[var(--ink-3)]">
-            {draft.type === 'INC' ? 'INC (Incidente)' : 'REQ (Requisição)'}
-          </span>
           <span className="w-1 h-1 rounded-full bg-[var(--rule)]" />
           <span className="font-data text-[var(--ink-3)]">Rascunho {draft.code}</span>
           <div className="flex-1" />
@@ -340,10 +338,10 @@ export function DraftConfirmationCard({
           </div>
         ) : (
           <>
-            <div className="text-[16px] font-semibold text-[var(--ink)] leading-snug">
+            <div className="text-[18px] font-semibold tracking-[-0.2px] text-[var(--ink)] leading-[23px]">
               {draft.title}
             </div>
-            <div className="text-[14px] text-[var(--ink-2)] leading-relaxed">
+            <div className="text-[13.5px] text-[var(--ink-2)] leading-[20px]">
               {draft.description}
             </div>
           </>
@@ -352,16 +350,17 @@ export function DraftConfirmationCard({
 
       {/* Fields Grid (matches nexo.pen Confirmation Card) */}
       {!editing && (
-        <div className="px-4 py-3 border-t border-[var(--rule)] grid grid-cols-3 gap-4 bg-[var(--paper)]">
+        <div className="px-[18px] pb-4">
+        <div className="border-t border-[var(--rule)] pt-3 grid grid-cols-3 gap-6 bg-[var(--paper)]">
           <div>
             <div className="text-[12px] text-[var(--ink-3)]">Categoria</div>
-            <div className="text-[14px] font-medium text-[var(--ink)] mt-0.5">
+            <div className="text-[14.5px] font-medium text-[var(--ink)] mt-1">
               {draft.category}
             </div>
           </div>
           <div>
             <div className="text-[12px] text-[var(--ink-3)]">Prioridade</div>
-            <div className="text-[14px] font-medium text-[var(--ink)] mt-0.5 flex items-center gap-1.5 flex-wrap">
+            <div className="text-[14.5px] font-medium text-[var(--ink)] mt-1 flex items-center gap-1.5 flex-wrap">
               <span
                 className={`w-1.5 h-1.5 rounded-full ${
                   draft.priority === 'Crítica'
@@ -379,16 +378,17 @@ export function DraftConfirmationCard({
           </div>
           <div>
             <div className="text-[12px] text-[var(--ink-3)]">Afetados</div>
-            <div className="text-[14px] font-medium text-[var(--ink)] mt-0.5">
+            <div className="text-[14.5px] font-medium text-[var(--ink)] mt-1">
               {draft.affectedScope}
             </div>
           </div>
+        </div>
         </div>
       )}
 
       {/* Actions Footer */}
       {isPending && (
-        <div className="px-3.5 py-2 bg-[var(--desk)] border-t border-[var(--rule)] flex items-center gap-1.5">
+        <div className="h-[68.5px] shrink-0 box-border px-2 py-2 pr-3.5 bg-[var(--desk)] border-t border-[var(--rule)] flex items-center gap-1.5">
           {editing ? (
             <>
               <button
