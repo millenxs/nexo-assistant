@@ -32,16 +32,26 @@ Acesse **`http://localhost:3000`** no navegador.
 
 ---
 
-## 2. Credenciais e Cenários de Demonstração
+## 2. Credenciais para Avaliação (Login)
 
-Na tela de **Login** (`Tela 1`), qualquer senha é aceita para os colaboradores e analistas dos dados de exemplo (ou use os botões de acesso rápido no rodapé do formulário):
+Na tela de **Login** (`Tela 1`), informe qualquer um dos e-mails corporativos abaixo com **qualquer senha** para autenticar como **Funcionário** (visão de Atendimento e Meu Perfil) ou como **Analista do Service Desk** (visão do Console do Analista N1/N2):
 
-| Persona | E-mail | Papel / SO | O que testar com esta conta |
+### Funcionários da Nexo (Visão do Colaborador)
+| Nome | E-mail corporativo | Setor · Sistema Operacional | O que testar com esta conta |
 |---|---|---|---|
 | **Ana Souza** | `ana.souza@nexo.com.br` | Financeiro · **Windows 11** | Fluxos das Telas 2 e 3 do `.pen`: erro 809 da VPN no Windows 11 (abre chamado com rascunho), consulta de 3 chamados abertos, chamado `INC-20311` com **prazo vencido** (há 5 dias) e chamado `INC-20150` (Senha do SAP) resolvido há 4 dias (**reabertura em até 7 dias**). |
+| **Bruno Tavares** | `bruno.tavares@nexo.com.br` | Operações · **Windows 10** | Caso `INC-20512` (coletores WMS no galpão) em que o agente pediu ajuda ao analista por **baixa confiança (41%)**. |
+| **Carla Mendes** | `carla.mendes@nexo.com.br` | Contabilidade · **Windows 11** | Chamado `REQ-10501` (SAP Fiscal com urgência no mesmo dia). Útil também para testar **Privacidade**: se outro funcionário tentar consultar o `REQ-10501`, o serviço bloqueia o acesso. |
+| **Diego Ramos** | `diego.ramos@nexo.com.br` | Engenharia · **macOS** | Conversa ativa com o agente tirando dúvidas sobre horário de atendimento e plantão 24h. |
+| **Elisa Prado** | `elisa.prado@nexo.com.br` | Marketing · **Windows 10** | Chamado `INC-20519` (Licença Adobe Creative Cloud) criado após confirmação de rascunho. |
 | **Fábio Nunes** | `fabio.nunes@nexo.com.br` | Comercial · **Windows 10** | **Resolução sem fila:** erro 809 da VPN no Windows 10 é resolvido diretamente pelo artigo da Central de Ajuda sem precisar abrir chamado. |
-| **Carla Mendes** | `carla.mendes@nexo.com.br` | Contabilidade · **Windows 11** | Chamado `REQ-10501` (SAP Fiscal) — útil para testar **Privacidade**: se Ana Souza tentar consultar o `REQ-10501`, o serviço bloqueia o acesso. |
-| **Rafael Lima** | `rafael.lima@nexo.com.br` | **Analista — Suporte N2** | Acesso direto ao **Console do Analista** (Telas 4 e 5 do `.pen`): filtros (`Todas`, `Para você`, `Com o agent`, `Minhas`), assumir conversa com agent pausado, responder como analista, devolver ao agent ou encerrar. |
+| **Gabriela Rocha** | `gabriela.rocha@nexo.com.br` | Produto · **Windows 11** | Dúvida de Wi-Fi corporativo resolvida pelo agente sem fila. |
+
+### Analistas do Service Desk (Console do Analista — Telas 4 e 5)
+| Nome | E-mail corporativo | Nível | O que testar no Console do Analista |
+|---|---|---|---|
+| **Rafael Lima** | `rafael.lima@nexo.com.br` | **Suporte N2** | Console completo (Telas 4 e 5 do `.pen`): filtros (`Todas`, `Para você`, `Com o agent`, `Minhas`), visualizar o resumo do caso transferido, assumir o atendimento (com o agent pausado), responder ao funcionário, devolver ao agent ou encerrar. |
+| **Mariana Costa** | `mariana.costa@nexo.com.br` | **Suporte N1** | Acesso alternativo de analista N1 ao Console do Service Desk. |
 
 ---
 

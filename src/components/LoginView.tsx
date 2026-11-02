@@ -1,18 +1,16 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ArrowRight, Check, Eye, EyeOff, KeyRound, Mail, Headset } from './Icons';
+import { ArrowRight, Check, Eye, EyeOff, KeyRound, Mail } from './Icons';
 import { Analyst, Employee } from '@/domain/types';
 import { NexoMark } from './NexoMark';
 
 export function LoginView({
-  employees,
-  analysts,
   onLoginEmployee,
   onLoginAnalyst,
 }: {
-  employees: Employee[];
-  analysts: Analyst[];
+  employees?: Employee[];
+  analysts?: Analyst[];
   onLoginEmployee: (employee: Employee) => void;
   onLoginAnalyst: (analyst: Analyst) => void;
 }) {
@@ -257,44 +255,8 @@ export function LoginView({
             </button>
           </form>
 
-          {/* Demo Accounts Quick Switch (Note section in nexo.pen) */}
-          <div className="pt-4 border-t border-[var(--rule)] space-y-2.5">
-            <div className="text-[12px] font-medium text-[var(--ink-3)]">
-              Acesso rápido para avaliação (qualquer senha é aceita):
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {employees.slice(0, 4).map((emp) => (
-                <button
-                  key={emp.id}
-                  type="button"
-                  disabled={loading}
-                  onClick={() => {
-                    setEmail(emp.email);
-                    loginWithEmail(emp.email);
-                  }}
-                  className={`px-2.5 py-1 rounded-md text-[12px] border transition-colors cursor-pointer ${
-                    email === emp.email
-                      ? 'bg-[var(--primary-soft)] border-[#0285F740] text-[var(--primary-text)] font-semibold'
-                      : 'bg-[var(--desk)] border-[var(--rule)] text-[var(--ink-2)] hover:bg-[#1B24310D]'
-                  }`}
-                >
-                  {emp.name} ({emp.os})
-                </button>
-              ))}
-            </div>
-
-            {analysts[0] && (
-              <button
-                type="button"
-                disabled={loading}
-                onClick={() => loginWithEmail(analysts[0]!.email)}
-                className="w-full h-9 px-3 rounded-[8px] bg-[var(--desk)] hover:bg-[#1B243112] border border-[var(--rule)] text-[12.5px] font-semibold text-[var(--ink)] flex items-center justify-center gap-2 transition-colors cursor-pointer"
-              >
-                <Headset className="w-3.5 h-3.5 text-[var(--cta)]" />
-                <span>Entrar direto no Console do Analista ({analysts[0].name} · {analysts[0].tier})</span>
-              </button>
-            )}
-          </div>
+          {/* Subtle divider from nexo.pen Note frame */}
+          <div className="pt-4 border-t border-[var(--rule)]" />
         </div>
 
         {/* Footer */}
